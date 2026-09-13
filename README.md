@@ -2,16 +2,12 @@
 
 **A city you have never operated in has no ride data. It does have satellite imagery.**
 
-### ▶ [Open the map](https://mathieutellene.github.io/sightline/)
+### ▶ [Open the interactive map](https://mathieutellene.github.io/sightline/)
 
-Click any Chicago neighbourhood and watch its 1.28 km satellite chip pass through
-the network — the real activations after each of the four convolutional blocks,
-then the demand estimate that comes out. No server, no dependencies: the page is
-static, and every image in it was written by `scripts/export_visuals.py` from the
-trained weights.
+Click any Chicago neighbourhood and watch its satellite chip pass through the
+network, block by block, to the estimate that comes out.
 
-> Early version. The pipeline, the model and the transfer experiment all run end
-> to end on open data; the roadmap at the bottom is what v0.2 is for.
+![Chicago's 77 community areas shaded by measured ride demand, with the headline transfer scores](docs/figures/map.png)
 
 Entering a new market, the question is always the same: *where inside this city
 do the rides come from?* The answer normally costs a pilot — months of operating
@@ -21,13 +17,21 @@ that city, for free, every five days, for a decade.
 So: train a convolutional network on satellite imagery in a city where the
 answer is published, and ask it about a city it has never seen.
 
-```
-   open trip data          Sentinel-2, 10 m/px
-   (New York, 17.8 M  ──▶  one 1.28 km chip   ──▶  CNN  ──▶  trips/km²/day
-    Uber + Lyft trips)      per zone                          (log10)
-                                                                  │
-                            never-seen city (Chicago)  ◀──────────┘
-```
+> Early version. The pipeline, the model and the transfer experiment all run end
+> to end on open data; the roadmap at the bottom is what v0.2 is for.
+
+---
+
+## What it actually does
+
+One 1.28 km square of ground goes in. Four convolutional blocks later, a number
+comes out. Everything below is a real activation captured from the trained
+weights, not an illustration — `scripts/export_visuals.py` writes them.
+
+![A satellite chip passing through four convolutional blocks to a demand estimate](docs/figures/flow.png)
+
+Resolution falls at every step — 64², 32², 16², 8² — while the number of
+channels climbs. The last block's 128 numbers are what become the estimate.
 
 ---
 
@@ -50,6 +54,8 @@ which — and ranking is what a market-entry decision actually consumes.
 **The level does not transfer at all.** R² collapses and the typical prediction
 is off by a factor of 2.65.
 
+![Measured against predicted for every Chicago zone, and the calibration curve](docs/figures/results.png)
+
 That failure is not mysterious, and it is not fixable with a bigger network. New
 York runs at a median of 744 trips/km²/day; Chicago at 128. That six-fold gap is
 how enthusiastically each city has adopted ride-hailing — a property of the
@@ -58,7 +64,35 @@ encodes it.** Asking pixels for it is asking the wrong source.
 
 ---
 
-## So how much local data does it take to fix?
+## What the network actually learned
+
+Put a busy zone and a quiet one through the same filters. Each tile holds the
+same channel in both rows and is scaled against the same anchor measured over
+all 77 zones, so a fainter tile really is a fainter response.
+
+![The same feature maps for Near North Side and for Hegewisch, with the correlation between each block's response and demand](docs/figures/compare.png)
+
+Read the bottom row of numbers left to right. Correlate how hard each block's
+tiles fire with the demand the zone really has, and the answer **changes sign on
+the way down**:
+
+| | block 1 | block 2 | block 3 | block 4 |
+|---|---|---|---|---|
+| response vs log demand | **+0.84** | **+0.82** | −0.34 | **−0.77** |
+
+The early blocks answer to *busy* — edges, texture, the density of built things.
+By the fourth, the filters have learned to fire on **emptiness**: vegetation,
+open ground, bare lots. Heavy demand is not what lights them up, it is what
+silences them. Hegewisch, the quietest of the 77 zones, ends up with the loudest
+final block in the set.
+
+This is measured in `scripts/export_visuals.py` and written into the data the
+page reads, not asserted here — so it cannot quietly stop being true if the
+model is retrained.
+
+---
+
+## So how much local data does it take to fix the level?
 
 The shape is already right and only the level is wrong, so the fix is one
 number. Fit a single scalar offset on *k* zones where real demand is known,
@@ -126,16 +160,18 @@ python -m sightline.tiles        # cut one satellite chip per zone (~15 MB cache
 python -m sightline.train        # train on NYC, test on Chicago  (~5 min, CPU)
 python -m sightline.calibrate    # the calibration curve above
 
-python scripts/export_visuals.py # rebuild everything the web page displays
+python scripts/export_visuals.py # everything the web page shows
+python scripts/make_figures.py   # every figure in this README
 ```
 
 Everything is cached under `data/`, so the second run of anything is instant.
 No API keys anywhere: every source is open.
 
-The last step is what makes the page honest: it re-runs the trained network over
-every Chicago zone, captures the activation after each block, and writes the
-chips, the feature-map mosaics and the metrics into `docs/viz/`. Nothing on the
-page is drawn by hand — delete `docs/viz/` and one command puts it back.
+The last two steps are what keep this file honest. They re-run the trained
+network over every Chicago zone, capture the activation after each block, and
+draw the pictures above from those captures and from the measured metrics —
+nothing in this README is a screenshot or a diagram drawn by hand. Delete
+`docs/figures/` and one command puts it back.
 
 ---
 
@@ -145,8 +181,10 @@ page is drawn by hand — delete `docs/viz/` and one command puts it back.
 |---|---|
 | Trip counts, both cities | **Real**, from each city's own published feed |
 | Satellite imagery | **Real** Sentinel-2, contemporaneous with the trip data — June 2022 for both, because that is the most recent month Chicago publishes. Predicting 2022 demand from 2026 imagery would leak four years of construction into the features |
+| The feature maps | **Real** activations, captured from the trained weights. Each is stretched for display against a per-channel anchor measured across the whole test set, so brightness is comparable between zones |
 | The transfer result | **Measured**, on a city held out entirely — not a random split |
 | The calibration curve | **Measured** over 400 random draws per *k*, median reported |
+| Lake Michigan on the map | **Drawn**, not surveyed. The community-area boundaries stop at the shoreline, so the water is reconstructed from their eastern edge, and the Indiana stretch south of the city is a straight approximation |
 
 ---
 
@@ -178,7 +216,8 @@ page is drawn by hand — delete `docs/viz/` and one command puts it back.
   simply happen to resemble each other.
 - Near-infrared. The current chips are 8-bit RGB; Sentinel-2 also ships NIR at
   10 m, which separates vegetation from bare ground far better than any
-  visible-band combination.
+  visible-band combination — and given what the deep blocks turned out to key
+  on, that is the most promising single change on this list.
 
 ---
 
