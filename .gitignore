@@ -5,7 +5,13 @@ __pycache__/
 
 # Cached downloads and derived data: every byte is reproducible from the
 # scripts, and the trip parquets alone are hundreds of megabytes.
-data/
+data/*
+
+# Except the trained weights and the two files of numbers they produced. 2.3 MB
+# buys a repository that is self-contained: the visuals and the README figures
+# can be rebuilt without retraining, and the figures keep matching the exact
+# model that produced the published scores rather than a later re-run of it.
+!data/runs/
 
 # OS
 .DS_Store

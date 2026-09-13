@@ -167,6 +167,12 @@ python scripts/make_figures.py   # every figure in this README
 Everything is cached under `data/`, so the second run of anything is instant.
 No API keys anywhere: every source is open.
 
+The trained weights are committed (`data/runs/`, 2.3 MB), so the last two steps
+run on a fresh clone without retraining — and the figures stay tied to the exact
+model that produced the scores above rather than to a later re-run of it. The
+downloads and chips are not committed; they are large and every byte of them is
+reproducible from the steps above.
+
 The last two steps are what keep this file honest. They re-run the trained
 network over every Chicago zone, capture the activation after each block, and
 draw the pictures above from those captures and from the measured metrics —
