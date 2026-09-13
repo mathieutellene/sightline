@@ -1,0 +1,12 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Cached downloads and derived data: every byte is reproducible from the
+# scripts, and the trip parquets alone are hundreds of megabytes.
+data/
+
+# OS
+.DS_Store
+Thumbs.db
