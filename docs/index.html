@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Sightline — reading ride demand off satellite imagery</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A CNN trained on New York, tested on a Chicago it never saw. Click any zone and watch a 1.28 km satellite chip become a demand estimate, layer by layer.">
+  <link rel="stylesheet" href="style.css?v=6">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand"><i class="mark"></i>Sightline</div>
+  <span class="chip">v0.1</span>
+  <div class="spacer"></div>
+  <a class="btn" href="https://github.com/mathieutellene/sightline">Source on GitHub</a>
+</header>
+
+<!-- ------------------------------------------------------------- hero -->
+<section class="hero">
+  <div class="wrap">
+    <p class="eyebrow"><i class="dot"></i>Ride demand from orbit</p>
+    <h1>A city you have never operated in has no ride data.
+      <span class="accent">It has satellite imagery.</span></h1>
+
+    <div class="ledes">
+      <p class="lede">
+        Entering a market, the question is always <em>where inside this city do the rides
+        come from?</em> Answering it normally costs a pilot — months of operating at a loss
+        to find out. Meanwhile a satellite has photographed every street, free, every five
+        days, for a decade.
+      </p>
+      <p class="lede">
+        So a small convolutional network was trained on <strong>New York</strong>, where the
+        answer is published — then handed <strong>Chicago</strong>, a city it has never seen.
+        Click any neighbourhood below and watch it go through the network.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ------------------------------------------------ the map + the model -->
+<section class="band pad">
+  <div class="wrap-wide">
+    <div class="explorer">
+
+      <div class="mapstage">
+        <svg id="map" aria-label="Chicago community areas, shaded by measured ride demand"></svg>
+
+        <div class="maplegend">
+          <div class="lg-t">Trips per km² per day</div>
+          <div class="rampbar"></div>
+          <div class="lg-s"><span id="lg-lo">—</span><span id="lg-hi">—</span></div>
+        </div>
+
+        <div class="mapctl">
+          <button type="button" id="zin" title="Zoom in" aria-label="Zoom in">+</button>
+          <button type="button" id="zout" title="Zoom out" aria-label="Zoom out">−</button>
+        </div>
+
+        <div class="mapattr">Sentinel-2 © ESA/Copernicus · boundaries © City of Chicago</div>
+        <div class="tip" id="tip" hidden></div>
+      </div>
+
+      <aside class="panel">
+        <div class="p-search">
+          <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="2"></circle>
+            <path d="M16 16l4.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
+          </svg>
+          <b>Chicago, Illinois</b><span id="p-count">—</span>
+        </div>
+        <div class="p-body">
+          <div class="p-name" id="d-name">—</div>
+          <div class="p-meta" id="d-meta">select a zone on the map</div>
+
+          <div class="p-nums">
+            <div class="num"><b id="d-true">—</b><span>measured</span></div>
+            <div class="num pred"><b id="d-pred">—</b><span>predicted</span></div>
+          </div>
+
+          <div class="rankrow"><span>Busiest, measured</span><b id="d-rank-t">—</b></div>
+          <div class="rankrow"><span>Busiest, predicted</span><b id="d-rank-p">—</b></div>
+          <div class="rankrow"><span>Level error</span><b id="d-err">—</b></div>
+
+          <p class="p-hint">
+            The rank is the point. The network places this zone almost where the trip
+            records do, having never seen a single Chicago ride — while the level it
+            reports is off by the factor above.
+          </p>
+        </div>
+      </aside>
+    </div>
+
+    <!-- the same click, expanded: what happens inside the network -->
+    <div class="netcard" style="margin-top:16px">
+      <div class="net-h">
+        <b>Inside the network</b>
+        <span id="net-sub">—</span>
+      </div>
+      <div class="flowstrip" id="flow"></div>
+      <p class="net-x">
+        Left to right: the 1.28 km square of ground the network is handed, then the 16
+        most varied feature maps after each convolutional block — real activations, not
+        illustrations. A channel keeps the same tile for every zone, so switching from a
+        busy neighbourhood to a quiet one shows <b>the same filter responding
+        differently</b>. Resolution falls at every step (64², 32², 16², 8²) while the
+        number of channels climbs, and by the last block almost everything has gone dark
+        except where the dense core is. That last 128-number summary is what becomes the
+        estimate.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- -------------------------------------------------------- the result -->
+<section class="band">
+  <div class="wrap">
+    <div class="sechead">
+      <h2>The ordering survives. The level does not.</h2>
+      <p class="sub">Trained on 255 New York zones; scored on 77 Chicago zones in a city
+        that was never shown to it, in any form.</p>
+    </div>
+
+    <div class="resultgrid">
+      <div class="rescard">
+        <div class="rc-h">New York<span>held-out zones, same city</span></div>
+        <div class="rc-rows">
+          <div><span>R²</span><b id="m-nyc-r2">—</b></div>
+          <div><span>rank ρ</span><b id="m-nyc-rho">—</b></div>
+          <div><span>median error</span><b id="m-nyc-err">—</b></div>
+        </div>
+      </div>
+      <div class="rescard hot">
+        <div class="rc-h">Chicago<span>never seen, in any form</span></div>
+        <div class="rc-rows">
+          <div><span>R²</span><b id="m-chi-r2">—</b></div>
+          <div><span>rank ρ</span><b id="m-chi-rho">—</b></div>
+          <div><span>median error</span><b id="m-chi-err">—</b></div>
+        </div>
+      </div>
+    </div>
+
+    <p class="resnote">
+      Shown a city it has never encountered, the network still knows <b>which zones are
+      busier than which</b> — rank correlation barely moves. What collapses is the absolute
+      level. New York runs at a median of 744 trips/km²/day and Chicago at 128: a six-fold
+      gap that is market adoption, taxi regulation and transit competition.
+      <b>None of that is visible from orbit</b>, and no larger network would find it.
+    </p>
+  </div>
+</section>
+
+<!-- ------------------------------------------------------- the charts -->
+<section class="band">
+  <div class="wrap">
+    <div class="sechead">
+      <h2>Where it is right, and how it is wrong</h2>
+    </div>
+    <div class="two">
+      <div class="chartcard">
+        <h3>Every Chicago zone, measured against predicted</h3>
+        <canvas id="scatter"></canvas>
+        <p class="cap">Both axes log scale; the dashed diagonal is a perfect call. The
+          cloud runs parallel to it but <b>flattened</b> — quiet zones over-called, the
+          busiest under-called. That is the level error, drawn. The highlighted point is
+          the zone selected on the map.</p>
+      </div>
+      <div class="chartcard">
+        <h3>How much local truth it takes to fix the level</h3>
+        <canvas id="calib"></canvas>
+        <p class="cap">One scalar offset fitted on <i>k</i> zones where real demand is
+          known, 400 random draws each. <b>One zone halves the error.</b> Past five, more
+          local data buys nothing — what is left is no longer level error.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer class="foot">
+  <div class="wrap">
+    <p>Sentinel-2 imagery © ESA/Copernicus · trip data © NYC TLC and the City of Chicago ·
+       every figure on this page is measured, and the
+       <a href="https://github.com/mathieutellene/sightline#limitations">limitations</a>
+       are listed next to them.</p>
+  </div>
+</footer>
+
+<script src="app.js?v=6"></script>
+</body>
+</html>

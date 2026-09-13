@@ -2,6 +2,14 @@
 
 **A city you have never operated in has no ride data. It does have satellite imagery.**
 
+### ▶ [Open the map](https://mathieutellene.github.io/sightline/)
+
+Click any Chicago neighbourhood and watch its 1.28 km satellite chip pass through
+the network — the real activations after each of the four convolutional blocks,
+then the demand estimate that comes out. No server, no dependencies: the page is
+static, and every image in it was written by `scripts/export_visuals.py` from the
+trained weights.
+
 > Early version. The pipeline, the model and the transfer experiment all run end
 > to end on open data; the roadmap at the bottom is what v0.2 is for.
 
@@ -117,10 +125,17 @@ python -m sightline.demand       # build the target from open trip data
 python -m sightline.tiles        # cut one satellite chip per zone (~15 MB cached)
 python -m sightline.train        # train on NYC, test on Chicago  (~5 min, CPU)
 python -m sightline.calibrate    # the calibration curve above
+
+python scripts/export_visuals.py # rebuild everything the web page displays
 ```
 
 Everything is cached under `data/`, so the second run of anything is instant.
 No API keys anywhere: every source is open.
+
+The last step is what makes the page honest: it re-runs the trained network over
+every Chicago zone, captures the activation after each block, and writes the
+chips, the feature-map mosaics and the metrics into `docs/viz/`. Nothing on the
+page is drawn by hand — delete `docs/viz/` and one command puts it back.
 
 ---
 
