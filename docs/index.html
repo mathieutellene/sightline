@@ -5,7 +5,7 @@
   <title>Sightline — reading ride demand off satellite imagery</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="A CNN trained on New York, tested on a Chicago it never saw. Click any zone and watch a 1.28 km satellite chip become a demand estimate, layer by layer.">
-  <link rel="stylesheet" href="style.css?v=9">
+  <link rel="stylesheet" href="style.css?v=10">
 </head>
 <body>
 
@@ -102,13 +102,14 @@
       <p class="net-x">
         Left to right: the 1.28 km square of ground the network is handed, then the 16
         most varied feature maps after each convolutional block — real activations, not
-        illustrations. A channel keeps the same tile for every zone, so switching from a
-        busy neighbourhood to a quiet one shows <b>the same filter responding
-        differently</b>. Resolution falls at every step (64², 32², 16², 8²) while the
-        number of channels climbs, and by the last block almost everything has gone dark
-        except where the dense core is. That last 128-number summary is what becomes the
+        illustrations. A channel keeps the same tile in every zone <em>and</em> is scaled
+        against the same anchor measured across all 77, so a fainter tile really is a
+        fainter response and switching zones shows <b>the same filter responding
+        differently</b>. Resolution falls at every step — 64², 32², 16², 8² — while the
+        number of channels climbs, and the last block's 128 numbers are what become the
         estimate.
       </p>
+      <p class="net-x" id="net-finding"></p>
     </div>
   </div>
 </section>
@@ -186,6 +187,6 @@
   </div>
 </footer>
 
-<script src="app.js?v=9"></script>
+<script src="app.js?v=10"></script>
 </body>
 </html>

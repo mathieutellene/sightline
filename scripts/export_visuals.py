@@ -50,22 +50,27 @@ def ramp(x: np.ndarray) -> np.ndarray:
     return np.where(x < 0.5, lo, hi).astype(np.uint8)
 
 
-def mosaic(act: np.ndarray, order: np.ndarray) -> Image.Image:
-    """(C,H,W) activation -> a TILE_GRID² mosaic of its most varied channels."""
+def mosaic(act: np.ndarray, order: np.ndarray, scale: np.ndarray) -> Image.Image:
+    """(C,H,W) activation -> a TILE_GRID² mosaic of its most varied channels.
+
+    `scale` is one display anchor per channel, measured across the whole test
+    set. Stretching each tile to its own range instead would be brighter, and
+    would be a lie: a quiet zone's faint response would be pushed up to look
+    exactly as strong as a busy zone's, and comparing the two is the only
+    reason the tiles are arranged this way.
+    """
     n = TILE_GRID * TILE_GRID
     chans = act[order[:n]]
+    tops = scale[order[:n]]
     h, w = chans.shape[1:]
     pad = 1
     canvas = np.zeros((TILE_GRID * (h + pad) - pad,
                        TILE_GRID * (w + pad) - pad, 3), dtype=np.uint8)
     canvas[:] = 255                                  # white gutters
-    for i, c in enumerate(chans):
-        # Per-channel display stretch. Absolute activation magnitude varies
-        # wildly between filters, so each channel is scaled on its own; the
-        # anchor is the 99th percentile rather than the maximum, because one hot
-        # pixel would otherwise flatten the whole tile, and the gamma lifts the
-        # mid-tones, which a ramp starting near white would otherwise lose.
-        top = float(np.percentile(c, 99))
+    for i, (c, top) in enumerate(zip(chans, tops)):
+        # The anchor is the 99th percentile rather than the maximum, because one
+        # hot pixel anywhere in the set would otherwise flatten every tile; the
+        # gamma lifts mid-tones a ramp starting near white would else lose.
         norm = np.clip(c / top, 0, 1) ** 0.7 if top > 0 else np.zeros_like(c)
         r, q = divmod(i, TILE_GRID)
         y0, x0 = r * (h + pad), q * (w + pad)
@@ -80,9 +85,14 @@ def mosaic(act: np.ndarray, order: np.ndarray) -> Image.Image:
 # Chicago's community-area layer stops at the shoreline, so the water east of it
 # has to be reconstructed if the map is to read as Chicago at a glance. For each
 # latitude the lake is everything between the city's easternmost point and the
-# edge of the frame. Below the latitude where the shore reaches the state line
-# the land east of the city is Indiana, not water, so the scan stops there.
+# edge of the frame. The scan stops where the shore reaches the Indiana line:
+# below that the city's eastern neighbour is Hammond and Gary, not water.
 SHORE_MIN_LAT = 41.705
+# South of that the real shore keeps going, east-south-east along the Indiana
+# dunes, dropping roughly this much latitude across the width of the frame.
+# Squaring the water off at SHORE_MIN_LAT instead leaves a ruler-straight edge
+# that reads as a rendering fault rather than as a coastline.
+SHORE_FALL = 0.085
 
 
 def lake_ring(union, steps: int = 260) -> list[list[float]]:
@@ -101,7 +111,9 @@ def lake_ring(union, steps: int = 260) -> list[list[float]]:
         shore.append([round(hit.bounds[2], 5), round(lat, 5)])
     if not shore:
         return []
-    return shore + [[east, shore[-1][1]], [east, shore[0][1]], shore[0]]
+    return shore + [[east, shore[-1][1]],
+                    [east, round(shore[0][1] - SHORE_FALL, 5)],
+                    shore[0]]
 
 
 def main():
@@ -130,8 +142,22 @@ def main():
         pred = (net.head(pooled).squeeze(-1).numpy() * sd + mu)
     embed = pooled.squeeze(-1).squeeze(-1).numpy()
 
-    # One channel ordering per layer, shared by every zone.
+    # One channel ordering per layer, and one display scale per channel, both
+    # measured across every zone so that a tile means the same thing in all of
+    # them — which is the whole point of laying them out this way.
     orders = [a.var(axis=(0, 2, 3)).argsort()[::-1] for a in acts]
+    scales = [np.percentile(a, 99, axis=(0, 2, 3)) for a in acts]
+
+    # How hard the channels on display respond, against the demand the network
+    # is being asked about. The sign flips deep in the stack — the early blocks
+    # answer to texture, the last ones to emptiness — and the page is only
+    # entitled to say so because this measures it. Hard-coding the numbers into
+    # the prose is how a page ends up describing a model it no longer has.
+    lgd = np.log10(np.maximum(np.array([dens[k] for k in keys]), 1))
+    shown = TILE_GRID * TILE_GRID
+    response = [round(float(np.corrcoef(
+        a[:, orders[i][:shown]].mean(axis=(1, 2, 3)), lgd)[0, 1]), 3)
+        for i, a in enumerate(acts)]
 
     OUT.mkdir(parents=True, exist_ok=True)
     (OUT / "layers").mkdir(exist_ok=True)
@@ -142,7 +168,7 @@ def main():
         Image.fromarray(np.transpose(chips[k], (1, 2, 0))).resize(
             (CHIP_PX, CHIP_PX), Image.LANCZOS).save(OUT / "chips" / f"{k}.jpg", quality=88)
         for li, a in enumerate(acts):
-            mosaic(a[i], orders[li]).save(OUT / "layers" / f"{k}_L{li + 1}.png")
+            mosaic(a[i], orders[li], scales[li]).save(OUT / "layers" / f"{k}_L{li + 1}.png")
         truth = dens[k]
         meta[k] = {
             "name": by[k].name.title(),
@@ -158,7 +184,8 @@ def main():
         "zones": meta,
         "layers": [{"name": f"block {i+1}",
                     "shape": list(a.shape[1:]),
-                    "channels": int(a.shape[1])} for i, a in enumerate(acts)],
+                    "channels": int(a.shape[1]),
+                    "response_r": response[i]} for i, a in enumerate(acts)],
         "metrics": run["chicago"],
         "nyc_metrics": run["nyc_val"],
         "calibration": json.loads((ROOT / "data" / "runs" / "calibration.json").read_text()),

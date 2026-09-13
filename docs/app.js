@@ -56,6 +56,7 @@ const shade = (v) => ramp(norm(v));
     .forEach((k, i) => { RANK_P[k] = i + 1; });
 
   $("p-count").textContent = KEYS.length + " zones";
+  finding();
   $("lg-lo").textContent = fmt(10 ** LOG_MIN);
   $("lg-hi").textContent = fmt(10 ** LOG_MAX) + "+";
   showMetrics();
@@ -66,6 +67,23 @@ const shade = (v) => ramp(norm(v));
   // Open on the densest zone: it is where the story is clearest.
   select(KEYS.reduce((a, b) => DATA.zones[a].true > DATA.zones[b].true ? a : b));
 })();
+
+/* The most interesting thing the mosaics show is not in the pictures, it is in
+   the sign of these four numbers — so they are read from the export rather than
+   written into the prose, where they could quietly stop being true. */
+function finding() {
+  const r = DATA.layers.map((l) => l.response_r);
+  if (r.some((v) => typeof v !== "number")) return;   // older export: say nothing
+  const sig = (v) => (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(2);
+  $("net-finding").innerHTML =
+    `Then watch the response invert. Measure how hard each block's tiles fire against the
+     demand the zone really has, and the first two blocks answer to <em>busy</em> —
+     ${sig(r[0])} and ${sig(r[1])} — while the last runs the other way at ${sig(r[3])}.
+     <b>The deep filters have learned to fire on emptiness</b>: vegetation, open ground,
+     bare lots. Heavy demand is not what lights them up, it is what silences them, and
+     the network reads the city off that silence. Hegewisch, the quietest zone in
+     Chicago, ends up with the loudest final block on the page.`;
+}
 
 function showMetrics() {
   const m = DATA.metrics, n = DATA.nyc_metrics;

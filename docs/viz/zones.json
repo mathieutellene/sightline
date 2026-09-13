@@ -10712,7 +10712,8 @@
     64,
     64
    ],
-   "channels": 32
+   "channels": 32,
+   "response_r": 0.843
   },
   {
    "name": "block 2",
@@ -10721,7 +10722,8 @@
     32,
     32
    ],
-   "channels": 64
+   "channels": 64,
+   "response_r": 0.823
   },
   {
    "name": "block 3",
@@ -10730,7 +10732,8 @@
     16,
     16
    ],
-   "channels": 128
+   "channels": 128,
+   "response_r": -0.342
   },
   {
    "name": "block 4",
@@ -10739,7 +10742,8 @@
     8,
     8
    ],
-   "channels": 128
+   "channels": 128,
+   "response_r": -0.768
   }
  ],
  "metrics": {
