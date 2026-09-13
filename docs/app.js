@@ -138,7 +138,7 @@ function initMap(geo, water) {
   })).filter((f) => DATA.zones[f.key]);
   WATER = water;
 
-  new ResizeObserver(() => { layout(); }).observe(stage);
+  new ResizeObserver(schedule).observe(stage);
   layout();
 
   $("zin").onclick = () => zoom(1.6);
@@ -154,7 +154,7 @@ const merc = (lat) =>
 
 function layout() {
   const r = stage.getBoundingClientRect();
-  if (!r.width || !r.height) return;              // hidden: nothing to lay out
+  if (!GEO || !r.width || !r.height) return;      // not loaded, or hidden
   W = Math.round(r.width); H = Math.round(r.height);
   svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
 
@@ -375,22 +375,36 @@ function drawCalibration() {
   axisLabels(ctx, W, H, m, "zones where real demand is known", "median error factor");
 }
 
-function draw() { drawScatter(); drawCalibration(); }
+/* Both of these can be reached by `pageshow` before the fetches have resolved. */
+function draw() { if (DATA) { drawScatter(); drawCalibration(); } }
 
-/* A canvas has to be re-rasterised on two separate triggers, and neither one
-   covers the other.
-   - Its box changing: a late webfont, an appearing scrollbar or the panel
-     reflowing all resize it without firing `resize`, so the boxes are observed
-     directly. Redrawing sets the backing store, never the CSS size, so this
-     cannot feed itself.
-   - The device pixel ratio changing: browser zoom, or the window moving to a
-     display of a different density. The box is unchanged, so the observer
-     stays silent and the chart would keep a stale, blurry raster.
-   ResizeObserver callbacks are delivered inside the rendering loop, which a
-   hidden tab does not run — which is harmless, because the redraw arrives the
-   moment the tab is shown again. */
-let t = 0;
-const redraw = () => { clearTimeout(t); t = setTimeout(draw, 100); };
-new ResizeObserver(redraw).observe($("scatter"));
-new ResizeObserver(redraw).observe($("calib"));
-addEventListener("resize", redraw);
+/* The map and both charts are rasterised against the size of their box, so they
+   have to be rebuilt whenever that size — or the pixel density behind it — is no
+   longer what they were drawn for. Three separate triggers are needed, because
+   none of them covers the others:
+   - The box changes. A late webfont, an appearing scrollbar or the panel
+     dropping out of the overlay all resize things without firing `resize`, so
+     the boxes are observed directly. Rebuilding only ever sets backing-store
+     sizes, never CSS ones, so this cannot feed itself.
+   - The device pixel ratio changes. Browser zoom, or the window moving to a
+     display of a different density: the box is identical, the observer stays
+     silent, and the raster would be left stale and blurry.
+   - The tab is shown for the first time. This is the one that actually bites: a
+     page loaded in a background tab does not run the rendering loop, and
+     ResizeObserver callbacks are delivered from inside that loop — so a map
+     armed while the stage had no size would never be told it now has one, and
+     would stay permanently empty. `visibilitychange` is the only signal that
+     arrives, and it is why this is not simply an observer. */
+function refresh() { layout(); draw(); }
+
+let scheduled = 0;
+function schedule() { clearTimeout(scheduled); scheduled = setTimeout(refresh, 100); }
+
+new ResizeObserver(schedule).observe($("scatter"));
+new ResizeObserver(schedule).observe($("calib"));
+addEventListener("resize", schedule);
+addEventListener("pageshow", refresh);
+// On `document`, which is where visibilitychange is dispatched, and
+// unconditional: rebuilding while still hidden costs one early return, whereas
+// trusting `document.hidden` costs an empty map wherever it reads false late.
+document.addEventListener("visibilitychange", refresh);
