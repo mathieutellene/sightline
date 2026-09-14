@@ -31,7 +31,11 @@ from sightline.model import DemandNet, normalise, to_target  # noqa: E402
 OUT = ROOT / "docs" / "viz"
 TILE_GRID = 4          # 4x4 = 16 channels shown per layer
 MIN_LAYER_PX = 320     # mosaics are upscaled by a whole factor to at least this
-CHIP_PX = 384          # the satellite chip, rendered for a 2x display
+# The chip ships at its native 128 px, losslessly. It used to be resampled up to
+# 384 and saved as JPEG, which looked slightly crisper and cost a great deal:
+# the browser runs the network on these very pixels, and a JPEG round trip moved
+# predictions by as much as 26%. Native PNG is also the smaller file, and it
+# stops the page from implying a resolution the model never had.
 
 
 def ramp(x: np.ndarray) -> np.ndarray:
@@ -165,8 +169,8 @@ def main():
 
     meta = {}
     for i, k in enumerate(keys):
-        Image.fromarray(np.transpose(chips[k], (1, 2, 0))).resize(
-            (CHIP_PX, CHIP_PX), Image.LANCZOS).save(OUT / "chips" / f"{k}.jpg", quality=88)
+        Image.fromarray(np.transpose(chips[k], (1, 2, 0))).save(
+            OUT / "chips" / f"{k}.png", optimize=True)
         for li, a in enumerate(acts):
             mosaic(a[i], orders[li], scales[li]).save(OUT / "layers" / f"{k}_L{li + 1}.png")
         truth = dens[k]
@@ -182,10 +186,17 @@ def main():
 
     (OUT / "zones.json").write_text(json.dumps({
         "zones": meta,
+        # `order` and `scale` are the sixteen channels drawn for this block and
+        # the anchor each is stretched against. The page needs them to render a
+        # mosaic it computed itself that is identical to the one rendered here,
+        # rather than merely similar — which is the whole claim being made.
         "layers": [{"name": f"block {i+1}",
                     "shape": list(a.shape[1:]),
                     "channels": int(a.shape[1]),
-                    "response_r": response[i]} for i, a in enumerate(acts)],
+                    "response_r": response[i],
+                    "order": [int(c) for c in orders[i][:shown]],
+                    "scale": [round(float(scales[i][c]), 5)
+                              for c in orders[i][:shown]]} for i, a in enumerate(acts)],
         "metrics": run["chicago"],
         "nyc_metrics": run["nyc_val"],
         "history": run.get("history", []),

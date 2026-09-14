@@ -1,0 +1,260 @@
+{
+ "input": {
+  "px": 128,
+  "channels": 3,
+  "scale": 0.00784313725490196,
+  "shift": -1.0
+ },
+ "target": {
+  "mu": 2.777496814727783,
+  "sd": 0.8553144335746765,
+  "base10": true
+ },
+ "params": 590497,
+ "layers": [
+  {
+   "kind": "conv",
+   "shape": [
+    32,
+    3,
+    3,
+    3
+   ],
+   "offset": 0,
+   "count": 864,
+   "stride": 2,
+   "pad": 1,
+   "block": 1,
+   "cin": 3,
+   "cout": 32
+  },
+  {
+   "kind": "bias",
+   "shape": [
+    32
+   ],
+   "offset": 864,
+   "count": 32,
+   "block": 1
+  },
+  {
+   "kind": "conv",
+   "shape": [
+    32,
+    32,
+    3,
+    3
+   ],
+   "offset": 896,
+   "count": 9216,
+   "stride": 1,
+   "pad": 1,
+   "block": 1,
+   "cin": 32,
+   "cout": 32
+  },
+  {
+   "kind": "bias",
+   "shape": [
+    32
+   ],
+   "offset": 10112,
+   "count": 32,
+   "block": 1
+  },
+  {
+   "kind": "conv",
+   "shape": [
+    64,
+    32,
+    3,
+    3
+   ],
+   "offset": 10144,
+   "count": 18432,
+   "stride": 2,
+   "pad": 1,
+   "block": 2,
+   "cin": 32,
+   "cout": 64
+  },
+  {
+   "kind": "bias",
+   "shape": [
+    64
+   ],
+   "offset": 28576,
+   "count": 64,
+   "block": 2
+  },
+  {
+   "kind": "conv",
+   "shape": [
+    64,
+    64,
+    3,
+    3
+   ],
+   "offset": 28640,
+   "count": 36864,
+   "stride": 1,
+   "pad": 1,
+   "block": 2,
+   "cin": 64,
+   "cout": 64
+  },
+  {
+   "kind": "bias",
+   "shape": [
+    64
+   ],
+   "offset": 65504,
+   "count": 64,
+   "block": 2
+  },
+  {
+   "kind": "conv",
+   "shape": [
+    128,
+    64,
+    3,
+    3
+   ],
+   "offset": 65568,
+   "count": 73728,
+   "stride": 2,
+   "pad": 1,
+   "block": 3,
+   "cin": 64,
+   "cout": 128
+  },
+  {
+   "kind": "bias",
+   "shape": [
+    128
+   ],
+   "offset": 139296,
+   "count": 128,
+   "block": 3
+  },
+  {
+   "kind": "conv",
+   "shape": [
+    128,
+    128,
+    3,
+    3
+   ],
+   "offset": 139424,
+   "count": 147456,
+   "stride": 1,
+   "pad": 1,
+   "block": 3,
+   "cin": 128,
+   "cout": 128
+  },
+  {
+   "kind": "bias",
+   "shape": [
+    128
+   ],
+   "offset": 286880,
+   "count": 128,
+   "block": 3
+  },
+  {
+   "kind": "conv",
+   "shape": [
+    128,
+    128,
+    3,
+    3
+   ],
+   "offset": 287008,
+   "count": 147456,
+   "stride": 2,
+   "pad": 1,
+   "block": 4,
+   "cin": 128,
+   "cout": 128
+  },
+  {
+   "kind": "bias",
+   "shape": [
+    128
+   ],
+   "offset": 434464,
+   "count": 128,
+   "block": 4
+  },
+  {
+   "kind": "conv",
+   "shape": [
+    128,
+    128,
+    3,
+    3
+   ],
+   "offset": 434592,
+   "count": 147456,
+   "stride": 1,
+   "pad": 1,
+   "block": 4,
+   "cin": 128,
+   "cout": 128
+  },
+  {
+   "kind": "bias",
+   "shape": [
+    128
+   ],
+   "offset": 582048,
+   "count": 128,
+   "block": 4
+  },
+  {
+   "kind": "pool",
+   "shape": [
+    0
+   ],
+   "offset": 582176,
+   "count": 0
+  },
+  {
+   "kind": "linear",
+   "shape": [
+    64,
+    128
+   ],
+   "offset": 582176,
+   "count": 8192,
+   "relu": true
+  },
+  {
+   "kind": "bias",
+   "shape": [
+    64
+   ],
+   "offset": 590368,
+   "count": 64
+  },
+  {
+   "kind": "linear",
+   "shape": [
+    1,
+    64
+   ],
+   "offset": 590432,
+   "count": 64,
+   "relu": false
+  },
+  {
+   "kind": "bias",
+   "shape": [
+    1
+   ],
+   "offset": 590496,
+   "count": 1
+  }
+ ]
+}

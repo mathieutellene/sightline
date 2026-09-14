@@ -233,6 +233,21 @@ h2 { font-size: clamp(21px, 2.4vw, 30px); line-height: 1.18; letter-spacing: -.8
 .resnote { font-size: 14.5px; line-height: 1.62; color: var(--muted); max-width: 92ch; margin-top: 18px; }
 .resnote b { color: var(--text); font-weight: 600; }
 
+/* ------------------------------------------------- local inference card */
+.runcard { margin-top: 16px; border-left: 3px solid var(--blue); }
+.runbar { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.runbar button { border: 0; cursor: pointer; font-family: inherit; }
+.runbar button:disabled { opacity: .55; cursor: default; }
+.runbar span { font-size: 12.5px; color: var(--muted); flex: 1 1 320px; }
+#live { margin-top: 16px; }
+#live canvas {
+  width: 100%; aspect-ratio: 1; display: block; border-radius: var(--r-tile);
+  border: 1px solid var(--line); background: var(--surface-2);
+  image-rendering: pixelated;
+}
+#live .stage.chip-in canvas { image-rendering: auto; }
+.pending { opacity: .35; }
+
 /* -------------------------------------------------------- epoch slider */
 .band.alt { background: #eef0f3; }
 .epochbar {

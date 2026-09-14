@@ -5,7 +5,7 @@
   <title>Sightline — reading ride demand off satellite imagery</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="A CNN trained on New York, tested on a Chicago it never saw. Click any zone and watch a 1.28 km satellite chip become a demand estimate, layer by layer.">
-  <link rel="stylesheet" href="style.css?v=12">
+  <link rel="stylesheet" href="style.css?v=13">
 </head>
 <body>
 
@@ -110,6 +110,24 @@
         estimate.
       </p>
       <p class="net-x" id="net-finding"></p>
+    </div>
+
+    <!-- the same network, computed here instead of shown from a recording -->
+    <div class="netcard runcard">
+      <div class="net-h">
+        <b>Run it here</b>
+        <span>590,497 weights, no library, no server — the forward pass is
+          <a href="https://github.com/mathieutellene/sightline/blob/main/docs/net.js">120
+          lines of plain JavaScript</a></span>
+      </div>
+      <div class="runbar">
+        <button type="button" class="btn primary" id="runlocal">
+          Compute this zone in your browser</button>
+        <span id="runstatus">Everything above was rendered in Python and shipped as
+          images. Press this and the same arithmetic happens on your machine.</span>
+      </div>
+      <div class="flowstrip" id="live" hidden></div>
+      <p class="net-x" id="run-x" hidden></p>
     </div>
   </div>
 </section>
@@ -236,6 +254,7 @@
   </div>
 </footer>
 
-<script src="app.js?v=12"></script>
+<script src="net.js?v=13"></script>
+<script src="app.js?v=13"></script>
 </body>
 </html>

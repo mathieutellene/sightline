@@ -217,7 +217,7 @@ def figure_map(data, geo, water, lo, hi):
 
 # ------------------------------------------------------- the network path
 def stages(data, key):
-    out = [(Image.open(VIZ / "chips" / f"{key}.jpg"), "INPUT", "128² · 1.28 km", BLUE, None)]
+    out = [(Image.open(VIZ / "chips" / f"{key}.png"), "INPUT", "128² · 1.28 km", BLUE, None)]
     for i, layer in enumerate(data["layers"]):
         r = layer.get("response_r")
         out.append((Image.open(VIZ / "layers" / f"{key}_L{i + 1}.png"),

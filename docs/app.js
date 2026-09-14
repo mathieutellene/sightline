@@ -63,6 +63,7 @@ const shade = (v) => ramp(norm(v));
 
   initMap(geo, water);
   initEpochs();
+  $("runlocal").addEventListener("click", runLocal);
   draw();
 
   // Open on the densest zone: it is where the story is clearest.
@@ -109,7 +110,7 @@ function tile(src, label, sub, cls) {
 
 function flow(key) {
   const z = DATA.zones[key];
-  const parts = [tile(`viz/chips/${key}.jpg`, "INPUT", "128² · 1.28 km", "chip-in")];
+  const parts = [tile(`viz/chips/${key}.png`, "INPUT", "128² · 1.28 km", "chip-in")];
   DATA.layers.forEach((l, i) => parts.push(
     tile(`viz/layers/${key}_L${i + 1}.png`, `BLOCK ${i + 1}`,
       `${l.channels} maps · ${l.shape[1]}²`)));
@@ -395,6 +396,100 @@ function drawCalibration() {
 }
 
 /* Both of these can be reached by `pageshow` before the fetches have resolved. */
+/* ------------------------------------- the network, computed right here */
+const TILE = 4;                     // 4x4 = the same 16 channels the mosaics show
+
+/* Paint one block's activation as the mosaic the exported PNGs use, from the
+   channel order and the display anchors the export recorded — so the tile the
+   browser computes is the same picture, not a similar one. */
+function mosaic(cv, t, layer) {
+  const n = TILE * TILE, side = TILE * (t.h + 1) - 1;
+  cv.width = side; cv.height = side;
+  const ctx = cv.getContext("2d");
+  const img = ctx.createImageData(side, side);
+  img.data.fill(255);
+  for (let i = 0; i < n; i++) {
+    const ch = layer.order[i], top = layer.scale[i];
+    const r = Math.floor(i / TILE), q = i % TILE;
+    for (let y = 0; y < t.h; y++) {
+      for (let x = 0; x < t.w; x++) {
+        const v = t.data[ch * t.h * t.w + y * t.w + x];
+        const u = top > 0 ? Math.pow(Math.min(Math.max(v / top, 0), 1), 0.7) : 0;
+        const [cr, cg, cb] = rampRGB(u);
+        const o = ((r * (t.h + 1) + y) * side + q * (t.w + 1) + x) * 4;
+        img.data[o] = cr; img.data[o + 1] = cg; img.data[o + 2] = cb;
+      }
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+}
+
+function rampRGB(t) {
+  t = Math.max(0, Math.min(1, t));
+  const [a, b, k] = t < 0.5 ? [COLD, MID, t / 0.5] : [MID, HOT, (t - 0.5) / 0.5];
+  return a.map((v, i) => Math.round(v + (b[i] - v) * k));
+}
+
+async function runLocal() {
+  const btn = $("runlocal"), status = $("runstatus");
+  if (!selected) return;
+  btn.disabled = true;
+
+  const cells = [`<figure class="stage chip-in"><div class="shot">
+    <canvas id="live-in"></canvas></div><div class="st-l">INPUT</div>
+    <div class="st-s">128² · 1.28 km</div></figure>`];
+  DATA.layers.forEach((l, i) => cells.push(
+    `<figure class="stage pending" id="live-s${i + 1}"><div class="shot">
+      <canvas id="live-c${i + 1}"></canvas></div>
+      <div class="st-l">BLOCK ${i + 1}</div>
+      <div class="st-s">${l.channels} maps · ${l.shape[1]}²</div></figure>`));
+  $("live").innerHTML = cells.join(CHEVRON) + CHEVRON
+    + `<div class="outbox"><b id="live-out">…</b><span>computed here</span></div>`;
+  $("live").hidden = false;
+
+  status.textContent = "Fetching 2.4 MB of weights…";
+  await Net.load();
+
+  const img = new Image();
+  img.src = `viz/chips/${selected}.png`;
+  await img.decode();
+  const px = Net.manifest().input.px;
+  const cv = document.createElement("canvas"); cv.width = cv.height = px;
+  const cx = cv.getContext("2d", { willReadFrequently: true });
+  cx.drawImage(img, 0, 0);
+  const pixels = cx.getImageData(0, 0, px, px).data;
+  $("live-in").width = px; $("live-in").height = px;
+  $("live-in").getContext("2d").drawImage(img, 0, 0);
+
+  status.textContent = "Running the forward pass…";
+  // Yield once so the strip paints before the main thread is taken for half a
+  // second; otherwise the whole thing appears at the end and looks like a fake.
+  await new Promise((r) => setTimeout(r, 30));
+
+  const t0 = performance.now();
+  const out = Net.run(pixels, px, (b, t) => {
+    mosaic($(`live-c${b}`), t, DATA.layers[b - 1]);
+    $(`live-s${b}`).classList.remove("pending");
+  });
+  const ms = Math.round(performance.now() - t0);
+
+  $("live-out").textContent = fmt(out.density);
+  const shipped = DATA.zones[selected].pred;
+  const gap = Math.abs(out.density - shipped) / shipped;
+  status.textContent = `Done in ${ms} ms on your machine.`;
+  $("run-x").hidden = false;
+  $("run-x").innerHTML =
+    `Those feature maps were not fetched — your browser produced them, one block at a
+     time, from 590,497 weights and the 128×128 pixels above. The estimate it reached is
+     <b>${fmt(out.density)}</b> against the <b>${fmt(shipped)}</b> computed in PyTorch:
+     ${gap < 0.005
+      ? "the same number, to the precision printed here"
+      : `a gap of ${(gap * 100).toFixed(1)}%`}. BatchNorm was folded into the convolutions
+     at export, so the browser only ever does convolution, ReLU, an average and two
+     matrix multiplies — which is all this model has ever been.`;
+  btn.disabled = false;
+}
+
 /* ------------------------------------------------- watching it learn */
 let EPOCHS = [], epochIdx = 0;
 
