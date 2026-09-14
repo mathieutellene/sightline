@@ -204,6 +204,8 @@ def main():
         "training": {k: run[k] for k in
                      ("params", "best_epoch", "epochs", "n_train", "n_val", "n_test")
                      if k in run},
+        "baseline": (json.loads((ROOT / "data" / "runs" / "baseline.json").read_text())
+                     if (ROOT / "data" / "runs" / "baseline.json").exists() else None),
         "calibration": json.loads((ROOT / "data" / "runs" / "calibration.json").read_text()),
     }, indent=1))
 

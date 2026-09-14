@@ -160,6 +160,51 @@ model is retrained.
 
 ---
 
+## "Why not just use OpenStreetMap?"
+
+The obvious objection to all of this is that imagery is a roundabout way of
+measuring urban density, and OSM hands that over directly and for free. That
+deserves a number rather than a paragraph, so `scripts/score_baseline.py` runs
+the identical evaluation on the road network instead of the pixels: same zones,
+same 1.28 km squares, same log10 target, same train-on-New-York split, same four
+metrics. Ridge regression on metres of street, arterial share, junctions and
+segment count, with the penalty chosen on New York alone.
+
+| on Chicago, never seen | R² | rank ρ | median error |
+|---|---|---|---|
+| OpenStreetMap road network — 4 features | −0.77 | 0.50 | ×3.17 |
+| **Satellite imagery — 49,152 pixels** | **+0.23** | **0.88** | **×2.65** |
+
+Beaten on every column, and the gap is widest on the ordering, which is the part
+a market-entry decision actually uses.
+
+Two things worth saying plainly rather than leaving for someone else to point
+out. Road density is weak here **even in the city it was fitted on** — ρ 0.61 on
+New York, against the network's 0.93. And this is four road features, not all of
+OpenStreetMap: building footprints and points of interest would likely do
+better, and were left out because fetching them was measured at thirty seconds
+per zone. So the claim is the narrow one — *the most complete and universally
+available part of OSM does not carry the ordering, and the pixels do* — which is
+the part that matters for a city whose map is thin.
+
+---
+
+## The map a city gets before it has any data of its own
+
+The same OpenStreetMap network that supplies the baseline also draws this.
+Chicago as nothing but its streets, each one tinted by the demand the network
+predicts for the zone it runs through.
+
+![Chicago's entire street network, each street coloured by predicted ride demand](docs/figures/streets.png)
+
+Not one ride record from this city went into a single colour. The Loop burns,
+the North Side runs warm, the South and West sides cool — an ordering the trip
+data agrees with at ρ 0.88, from a network that has never seen a Chicago trip.
+68,416 streets, 14,713 km. Grey is outside the 77 community areas, where there
+is no estimate to draw.
+
+---
+
 ## So how much local data does it take to fix the level?
 
 The shape is already right and only the level is wrong, so the fix is one
@@ -229,6 +274,8 @@ python -m sightline.train        # train on NYC, test on Chicago  (~5 min, CPU)
 python -m sightline.calibrate    # the calibration curve above
 
 python scripts/export_visuals.py # everything the web page shows
+python scripts/export_weights.py # the weights the browser runs
+python scripts/score_baseline.py # the OpenStreetMap comparison (fetches OSM)
 python scripts/make_figures.py   # every figure in this README
 ```
 
@@ -258,6 +305,8 @@ nothing in this README is a screenshot or a diagram drawn by hand. Delete
 | The feature maps | **Real** activations, captured from the trained weights. Each is stretched for display against a per-channel anchor measured across the whole test set, so brightness is comparable between zones |
 | The transfer result | **Measured**, on a city held out entirely — not a random split |
 | The calibration curve | **Measured** over 400 random draws per *k*, median reported |
+| The OSM comparison | **Measured** on the same zones and split, with the ridge penalty chosen on New York only |
+| The street map | **Real** OpenStreetMap geometry; the colours are the model's predictions, not measurements |
 | Lake Michigan on the map | **Drawn**, not surveyed. The community-area boundaries stop at the shoreline, so the water is reconstructed from their eastern edge, and the Indiana stretch south of the city is a straight approximation |
 
 ---
@@ -280,12 +329,11 @@ nothing in this README is a screenshot or a diagram drawn by hand. Delete
 
 ## Roadmap to v0.2
 
-- **The OSM baseline** (`sightline/baseline.py`, built but not yet scored). The
-  obvious objection is that imagery is a roundabout way of measuring density,
-  and OpenStreetMap hands that over directly. That objection deserves a number.
-  The interesting case is where the two disagree: OSM is excellent in mature
-  cities and thin almost everywhere else, which is exactly where a satellite
-  keeps working.
+- **A richer OSM baseline.** The road-network one above is answered; building
+  footprints, points of interest and land use are not in it, and they are the
+  features most likely to close the gap. The cost is the reason: Overpass was
+  measured at thirty seconds per zone for building geometry. A bulk extract
+  rather than an API would make it cheap.
 - A third and fourth city, to see whether ρ ≈ 0.88 holds or New York and Chicago
   simply happen to resemble each other.
 - Near-infrared. The current chips are 8-bit RGB; Sentinel-2 also ships NIR at

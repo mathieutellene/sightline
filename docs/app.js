@@ -60,6 +60,7 @@ const shade = (v) => ramp(norm(v));
   $("lg-lo").textContent = fmt(10 ** LOG_MIN);
   $("lg-hi").textContent = fmt(10 ** LOG_MAX) + "+";
   showMetrics();
+  showBaseline();
 
   initMap(geo, water);
   initEpochs();
@@ -85,6 +86,37 @@ function finding() {
      bare lots. Heavy demand is not what lights them up, it is what silences them, and
      the network reads the city off that silence. Hegewisch, the quietest zone in
      Chicago, ends up with the loudest final block on the page.`;
+}
+
+/* The objection the README used to carry without answering: that OSM gives you
+   density directly. It is only worth putting on the page because it was scored
+   the same way — same zones, same squares, same split — so the two rows can sit
+   in one table without a footnote explaining why they cannot be compared. */
+function showBaseline() {
+  const b = DATA.baseline;
+  if (!b) return;
+  const n = DATA.metrics;
+  const row = (label, m, win) => `<tr class="${win ? "win" : ""}">
+    <td>${label}</td>
+    <td class="${m.r2 < 0 ? "lose" : ""}">${m.r2 >= 0 ? "+" : "−"}${
+    Math.abs(m.r2).toFixed(2)}</td>
+    <td>${m.spearman.toFixed(2)}</td>
+    <td>×${m.median_ratio_error.toFixed(2)}</td></tr>`;
+  $("cmp-body").innerHTML =
+    row(`OpenStreetMap road network — ${b.features.length} features`, b.chicago, false)
+    + row("Satellite imagery — 49,152 pixels", n, true);
+  $("cmp-note").innerHTML =
+    `Ridge regression on metres of street, arterial share, junctions and segment count,
+     the penalty chosen on New York alone. It is beaten on every column, and the ordering
+     is where the gap is widest: <b>ρ 0.88 against ${b.chicago.spearman.toFixed(2)}</b>.
+     Worth saying plainly, though: road density is weak here even in the city it was
+     fitted on, reaching only ρ ${b.nyc_fit.spearman.toFixed(2)} there — and this is four
+     road features, not all of OpenStreetMap. Building footprints and points of interest
+     would likely do better, and were left out because fetching them cost thirty seconds
+     a zone. What this shows is that <b>the most complete and universally available part
+     of OSM does not carry the ordering, and the pixels do</b> — which is the part that
+     matters for a city whose map is thin.`;
+  $("baseline").hidden = false;
 }
 
 function showMetrics() {

@@ -5,7 +5,7 @@
   <title>Sightline — reading ride demand off satellite imagery</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="A CNN trained on New York, tested on a Chicago it never saw. Click any zone and watch a 1.28 km satellite chip become a demand estimate, layer by layer.">
-  <link rel="stylesheet" href="style.css?v=13">
+  <link rel="stylesheet" href="style.css?v=14">
 </head>
 <body>
 
@@ -216,6 +216,38 @@
       gap that is market adoption, taxi regulation and transit competition.
       <b>None of that is visible from orbit</b>, and no larger network would find it.
     </p>
+
+    <div class="baseline" id="baseline" hidden>
+      <h3>“Why not just use OpenStreetMap?”</h3>
+      <p class="sub">The obvious objection: imagery is a roundabout way of measuring urban
+        density, and OSM hands that over directly. So here is the same evaluation — same
+        zones, same 1.28 km squares, same target, same train-on-New-York split — given
+        the road network instead of the pixels.</p>
+      <table class="cmp">
+        <thead><tr><th>on Chicago, never seen</th><th>R²</th><th>rank ρ</th>
+          <th>median error</th></tr></thead>
+        <tbody id="cmp-body"></tbody>
+      </table>
+      <p class="cap" id="cmp-note"></p>
+    </div>
+  </div>
+</section>
+
+<!-- ------------------------------------------------- the city as streets -->
+<section class="band alt">
+  <div class="wrap">
+    <div class="sechead">
+      <h2>The map a city gets before it has any data of its own</h2>
+      <p class="sub">Chicago drawn only as its streets, every one tinted by the demand the
+        network predicts for the zone it runs through. Grey is outside the 77 community
+        areas, where there is no estimate.</p>
+    </div>
+    <img class="poster" src="figures/streets.png" loading="lazy"
+         alt="Chicago's street network, each street coloured by predicted ride demand">
+    <p class="cap">Not one ride record from this city went into a single colour here. The
+      Loop burns, the North Side runs warm, the South and West sides cool — an ordering
+      the trip data agrees with at ρ 0.88, produced by a network that has never seen a
+      Chicago trip. 68,416 streets, 14,713 km, from OpenStreetMap.</p>
   </div>
 </section>
 
@@ -254,7 +286,7 @@
   </div>
 </footer>
 
-<script src="net.js?v=13"></script>
-<script src="app.js?v=13"></script>
+<script src="net.js?v=14"></script>
+<script src="app.js?v=14"></script>
 </body>
 </html>

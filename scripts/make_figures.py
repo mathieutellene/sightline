@@ -442,7 +442,7 @@ def figure_streets(data, water, lo, hi):
                 outside += 1
             f.line([(px(a[0]), py(a[1])), (px(b[0]), py(b[1]))], fill=col, width=wdt)
 
-    f.box((30, 30, 430, 214), 10, fill=PAPER)
+    f.box((30, 30, 434, 228), 10, fill=PAPER)
     f.text((50, 50), "Chicago, with nothing but its streets", 21, True)
     f.text((50, 84),
            "Every street tinted by the demand the network\n"

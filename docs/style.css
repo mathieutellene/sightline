@@ -280,6 +280,31 @@ h2 { font-size: clamp(21px, 2.4vw, 30px); line-height: 1.18; letter-spacing: -.8
 #snap-ny, #snap-chi { height: 330px; }
 #curve { height: 250px; }
 
+/* ------------------------------------------------- the OSM comparison */
+.baseline {
+  background: var(--surface); border-radius: 12px; box-shadow: var(--sh-1);
+  padding: 18px 20px 16px; margin-top: 20px;
+}
+.baseline h3 { font-size: 17px; font-weight: 600; letter-spacing: -.3px; }
+.baseline .sub { max-width: 88ch; margin: 8px 0 16px; }
+.cmp { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.cmp th, .cmp td { text-align: right; padding: 9px 10px; border-bottom: 1px solid var(--line); }
+.cmp th:first-child, .cmp td:first-child { text-align: left; }
+.cmp th {
+  font-size: 11px; letter-spacing: .4px; text-transform: uppercase;
+  color: var(--dim); font-weight: 500;
+}
+.cmp td { font-size: 15px; }
+.cmp td:first-child { font-size: 14px; }
+.cmp tr.win td { font-weight: 600; }
+.cmp tr.win td:first-child { color: var(--blue); }
+.cmp .lose { color: var(--red); }
+
+.poster {
+  width: 100%; height: auto; display: block; border-radius: 12px;
+  box-shadow: var(--sh-2); background: var(--surface);
+}
+
 /* ------------------------------------------------------------- charts */
 .two { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
 .chartcard { background: var(--surface); border-radius: 12px; box-shadow: var(--sh-1); padding: 16px 18px 18px; }
