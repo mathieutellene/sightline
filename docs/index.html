@@ -5,7 +5,7 @@
   <title>Sightline — reading ride demand off satellite imagery</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="A CNN trained on New York, tested on a Chicago it never saw. Click any zone and watch a 1.28 km satellite chip become a demand estimate, layer by layer.">
-  <link rel="stylesheet" href="style.css?v=14">
+  <link rel="stylesheet" href="style.css?v=17">
 </head>
 <body>
 
@@ -128,6 +128,45 @@
       </div>
       <div class="flowstrip" id="live" hidden></div>
       <p class="net-x" id="run-x" hidden></p>
+    </div>
+
+    <!-- what the network used, as opposed to what it computed -->
+    <div class="netcard" id="salcard">
+      <div class="net-h">
+        <b>Where it was looking</b>
+        <span id="sal-sub">—</span>
+      </div>
+      <div class="salgrid">
+        <figure class="salshot">
+          <div class="shot"><img id="sal-chip" alt="satellite chip"></div>
+          <figcaption>What it was given</figcaption>
+        </figure>
+        <figure class="salshot">
+          <div class="shot">
+            <img id="sal-map" alt="occlusion sensitivity map">
+            <canvas id="sal-probe"></canvas>
+          </div>
+          <figcaption class="accent">What it used — <b>click anywhere to cover that
+            spot and re-run</b></figcaption>
+        </figure>
+        <div class="salnote">
+          <p>The feature maps show what the network <em>computed</em>. They do not show
+            what it <em>used</em>: a channel can light up brilliantly over something that
+            made no difference to the answer.</p>
+          <p>So cover a 240 m square of the chip with flat grey and run the whole network
+            again. A patch that mattered leaves a hole in the answer. 196 probes per zone,
+            no gradients and no heuristics — every pixel here is a real prediction the
+            model made with one square of the world hidden.</p>
+          <ul class="sallegend">
+            <li><i class="sw red"></i><b>Red</b> — covering it <b>lowered</b> the estimate.
+              The network was reading demand there.</li>
+            <li><i class="sw blue"></i><b>Blue</b> — covering it <b>raised</b> it. Evidence
+              against, which for the deep blocks means greenery and open ground.</li>
+            <li><i class="sw white"></i><b>White</b> — covering it changed nothing.</li>
+          </ul>
+          <p id="sal-probe-out" class="probeout" hidden></p>
+        </div>
+      </div>
     </div>
   </div>
 </section>
@@ -286,7 +325,7 @@
   </div>
 </footer>
 
-<script src="net.js?v=14"></script>
-<script src="app.js?v=14"></script>
+<script src="net.js?v=17"></script>
+<script src="app.js?v=17"></script>
 </body>
 </html>

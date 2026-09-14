@@ -8,6 +8,17 @@
  * charts are plain canvas, which keeps the whole thing inspectable — and means
  * the page works offline from a folder.
  */
+/* Every data file carries the same stamp as the code that reads it.
+ *
+ * Without it a returning visitor gets a fresh app.js against a cached
+ * zones.json, and a shape mismatch surfaces as features quietly missing rather
+ * than as an error — which is exactly how a slider built for sixty epochs came
+ * back with seven steps. The version is read off this script's own URL so there
+ * is one place to bump it, in the HTML, and no second copy to forget. */
+const VERSION = new URL(document.currentScript.src, location.href)
+  .searchParams.get("v") || "";
+const url = (path) => (VERSION ? `${path}?v=${VERSION}` : path);
+
 const COLD = [214, 227, 252], MID = [66, 133, 244], HOT = [217, 48, 37];
 
 /* The one ramp, shared with the map, the charts and the exported feature maps,
@@ -33,9 +44,9 @@ const shade = (v) => ramp(norm(v));
 /* ------------------------------------------------------------------ boot */
 (async function () {
   const [zj, geo, water] = await Promise.all([
-    fetch("viz/zones.json").then((r) => r.json()),
-    fetch("viz/chicago.geojson").then((r) => r.json()),
-    fetch("viz/water.json").then((r) => r.json()),
+    fetch(url("viz/zones.json")).then((r) => r.json()),
+    fetch(url("viz/chicago.geojson")).then((r) => r.json()),
+    fetch(url("viz/water.json")).then((r) => r.json()),
   ]);
   DATA = zj;
   KEYS = Object.keys(DATA.zones);
@@ -64,6 +75,7 @@ const shade = (v) => ramp(norm(v));
 
   initMap(geo, water);
   initEpochs();
+  initSaliency();
   $("runlocal").addEventListener("click", runLocal);
   draw();
 
@@ -142,9 +154,9 @@ function tile(src, label, sub, cls) {
 
 function flow(key) {
   const z = DATA.zones[key];
-  const parts = [tile(`viz/chips/${key}.png`, "INPUT", "128² · 1.28 km", "chip-in")];
+  const parts = [tile(url(`viz/chips/${key}.png`), "INPUT", "128² · 1.28 km", "chip-in")];
   DATA.layers.forEach((l, i) => parts.push(
-    tile(`viz/layers/${key}_L${i + 1}.png`, `BLOCK ${i + 1}`,
+    tile(url(`viz/layers/${key}_L${i + 1}.png`), `BLOCK ${i + 1}`,
       `${l.channels} maps · ${l.shape[1]}²`)));
   $("flow").innerHTML = parts.join(CHEVRON) + CHEVRON
     + `<div class="outbox"><b>${fmt(z.pred)}</b><span>predicted trips/km²/day</span></div>`;
@@ -173,6 +185,7 @@ function select(key) {
   document.querySelectorAll("#map .zone").forEach((p) =>
     p.classList.toggle("sel", p.dataset.key === key));
   placePin();
+  showSaliency();
   drawScatter();
 }
 
@@ -482,16 +495,10 @@ async function runLocal() {
   status.textContent = "Fetching 2.4 MB of weights…";
   await Net.load();
 
-  const img = new Image();
-  img.src = `viz/chips/${selected}.png`;
-  await img.decode();
   const px = Net.manifest().input.px;
-  const cv = document.createElement("canvas"); cv.width = cv.height = px;
-  const cx = cv.getContext("2d", { willReadFrequently: true });
-  cx.drawImage(img, 0, 0);
-  const pixels = cx.getImageData(0, 0, px, px).data;
+  const { ctx, pixels } = await pixelsOf(url(`viz/chips/${selected}.png`), px);
   $("live-in").width = px; $("live-in").height = px;
-  $("live-in").getContext("2d").drawImage(img, 0, 0);
+  $("live-in").getContext("2d").drawImage(ctx.canvas, 0, 0);
 
   status.textContent = "Running the forward pass…";
   // Yield once so the strip paints before the main thread is taken for half a
@@ -520,6 +527,94 @@ async function runLocal() {
      at export, so the browser only ever does convolution, ReLU, an average and two
      matrix multiplies — which is all this model has ever been.`;
   btn.disabled = false;
+}
+
+/* Read an image into raw pixels for the network.
+
+   Deliberately not `new Image()` + `await img.decode()`: that route goes through
+   the rendering pipeline, which a hidden or throttled tab may never run, and the
+   promise then never settles — the button sits on "running…" forever with no
+   error anywhere. Reproduced exactly that way. createImageBitmap decodes off the
+   rendering path and settles whatever the tab is doing. */
+async function pixelsOf(url, px) {
+  const blob = await fetch(url).then((r) => r.blob());
+  const bmp = await createImageBitmap(blob);
+  const cv = document.createElement("canvas");
+  cv.width = cv.height = px;
+  const ctx = cv.getContext("2d", { willReadFrequently: true });
+  ctx.drawImage(bmp, 0, 0, px, px);
+  if (bmp.close) bmp.close();
+  return { ctx, pixels: ctx.getImageData(0, 0, px, px).data };
+}
+
+/* ------------------------------- occlusion: what the network actually used */
+let SAL = null;
+
+async function initSaliency() {
+  try {
+    SAL = await fetch(url("viz/saliency/index.json")).then((r) => r.json());
+  } catch (_) {
+    $("salcard").hidden = true;                 // export not run: say nothing
+    return;
+  }
+  $("sal-map").addEventListener("click", probeAt);
+  showSaliency();
+}
+
+function showSaliency() {
+  if (!SAL || !selected) return;
+  $("sal-chip").src = url(`viz/chips/${selected}.png`);
+  $("sal-map").src = url(`viz/saliency/${selected}.png`);
+  $("sal-sub").textContent =
+    `${DATA.zones[selected].name} · ${SAL.probes_per_zone} occlusions · `
+    + `${SAL.patch_px * SAL.metres_per_px} m patch · full scale ×`
+    + `${(10 ** SAL.scale_log10).toFixed(2)}, shared across all ${KEYS.length} zones`;
+  const cv = $("sal-probe");
+  cv.getContext("2d").clearRect(0, 0, cv.width, cv.height);
+  $("sal-probe-out").hidden = true;
+}
+
+/* Clicking runs the real thing rather than reading the stored map: one forward
+   pass with a grey square where the pointer went. It is the same arithmetic the
+   export did 196 times, which is the point — the reader can pick the square. */
+async function probeAt(e) {
+  const img = $("sal-map"), r = img.getBoundingClientRect();
+  const out = $("sal-probe-out");
+  out.hidden = false;
+  out.innerHTML = "Loading the weights and running the network…";
+
+  await Net.load();
+  const P = SAL.patch_px, N = Net.manifest().input.px;
+  const cx = Math.round(((e.clientX - r.left) / r.width) * N);
+  const cy = Math.round(((e.clientY - r.top) / r.height) * N);
+  const x0 = Math.max(0, Math.min(N - P, cx - P / 2));
+  const y0 = Math.max(0, Math.min(N - P, cy - P / 2));
+
+  const { ctx, pixels } = await pixelsOf(url(`viz/chips/${selected}.png`), N);
+  const before = Net.run(pixels, N).density;
+
+  ctx.fillStyle = "rgb(128,128,128)";
+  ctx.fillRect(x0, y0, P, P);
+  const after = Net.run(ctx.getImageData(0, 0, N, N).data, N).density;
+
+  // Mark the square on the overlay so the number has a place attached to it.
+  const ov = $("sal-probe");
+  ov.width = ov.height = N;
+  const oc = ov.getContext("2d");
+  oc.clearRect(0, 0, N, N);
+  oc.strokeStyle = "#202124"; oc.lineWidth = 2;
+  oc.strokeRect(x0 + 1, y0 + 1, P - 2, P - 2);
+  oc.strokeStyle = "#fff"; oc.lineWidth = 1;
+  oc.strokeRect(x0 + 2, y0 + 2, P - 4, P - 4);
+
+  const drop = (before - after) / before;
+  out.innerHTML =
+    `Covering that ${P * SAL.metres_per_px} m square took the estimate from
+     <b>${fmt(before)}</b> to <b>${fmt(after)}</b> — ${
+    Math.abs(drop) < 0.005 ? "no change at all"
+      : drop > 0 ? `<b>${(drop * 100).toFixed(1)}% lower</b>, so the network was reading
+           demand there` : `<b>${(-drop * 100).toFixed(1)}% higher</b>, so that patch was
+           evidence against`}. Computed here, just now, by your browser.`;
 }
 
 /* ------------------------------------------------- watching it learn */

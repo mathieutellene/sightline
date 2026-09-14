@@ -61,9 +61,11 @@ def run(epochs=60, seed=0, lr=2e-3, batch=32, val_frac=0.15):
     best = {"val": 1e9, "state": None, "epoch": -1}
     history: list[dict] = []
     snaps: dict[str, dict] = {}
-    # Epochs whose predictions are kept whole, so the page can show the cloud
-    # tightening rather than assert that it did.
-    SNAP_AT = {1, 2, 4, 8, 16, 32, epochs}
+    # Every epoch's predictions are kept whole, so the page and the animation
+    # can show the cloud tightening rather than assert that it did. 230 floats
+    # an epoch is nothing next to what it buys: a slider that moves smoothly and
+    # a frame for each step instead of a slideshow of seven.
+    SNAP_AT = set(range(1, epochs + 1))
     t0 = time.time()
     for ep in range(1, epochs + 1):
         net.train()

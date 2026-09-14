@@ -248,6 +248,48 @@ h2 { font-size: clamp(21px, 2.4vw, 30px); line-height: 1.18; letter-spacing: -.8
 #live .stage.chip-in canvas { image-rendering: auto; }
 .pending { opacity: .35; }
 
+/* ------------------------------------------- occlusion sensitivity card */
+#salcard { margin-top: 16px; }
+.salgrid {
+  display: grid; grid-template-columns: 260px 260px minmax(0, 1fr); gap: 22px;
+  align-items: start;
+}
+.salshot { min-width: 0; }
+.salshot .shot {
+  position: relative; border-radius: var(--r-tile); overflow: hidden;
+  border: 1px solid var(--line); background: var(--surface-2);
+}
+.salshot img { width: 100%; aspect-ratio: 1; display: block; }
+/* The probe overlay has to sit exactly on the map it annotates, and must not
+   swallow the clicks that drive it. */
+#sal-probe {
+  position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none;
+}
+#sal-map { cursor: crosshair; }
+.salshot figcaption { font-size: 12px; font-weight: 600; margin-top: 8px; }
+.salshot figcaption.accent { color: var(--blue); font-weight: 500; }
+.salshot figcaption.accent b { font-weight: 600; }
+.salnote p { font-size: 12.5px; line-height: 1.6; color: var(--muted); margin-bottom: 9px; }
+.salnote em { font-style: italic; color: var(--text); }
+.sallegend { list-style: none; margin: 12px 0 0; }
+.sallegend li {
+  display: flex; align-items: baseline; gap: 8px; font-size: 12.5px;
+  line-height: 1.55; color: var(--muted); margin-bottom: 5px;
+}
+.sallegend b { color: var(--text); font-weight: 600; }
+.sw {
+  width: 11px; height: 11px; flex: none; border-radius: 3px; align-self: center;
+  border: 1px solid var(--line-2);
+}
+.sw.red { background: var(--red); border-color: var(--red); }
+.sw.blue { background: var(--blue); border-color: var(--blue); }
+.sw.white { background: #fff; }
+.probeout {
+  margin-top: 12px; padding: 10px 12px; border-radius: 9px;
+  background: var(--blue-soft); color: #174ea6; font-size: 12.5px; line-height: 1.55;
+}
+.probeout b { font-weight: 600; }
+
 /* -------------------------------------------------------- epoch slider */
 .band.alt { background: #eef0f3; }
 .epochbar {

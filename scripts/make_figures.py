@@ -356,6 +356,142 @@ def figure_results(data, lo, hi):
     f.save("results.png")
 
 
+# ------------------------------------------- learning, as an animation
+def figure_learning_gif(data):
+    """Sixty epochs as sixty frames: the cloud forming, beside the one it cannot see.
+
+    A GIF rather than a video because GitHub renders it inline in the README and
+    plays it without asking. One palette is built from the first frame and reused
+    for all of them — quantising each frame on its own makes the background
+    shimmer, which reads as noise in the data rather than as an artefact.
+    """
+    snaps = data.get("snapshots") or {}
+    eps = sorted((int(k) for k in snaps), key=int)
+    if len(eps) < 12:
+        print(f"  learning.gif omitido (sólo {len(eps)} épocas guardadas; "
+              "reentrena con SNAP_AT completo)")
+        return
+    hist = {h["epoch"]: h for h in data.get("history", [])}
+
+    W, H, side, pad = 860, 430, 300, 26
+    vals = [v for k in snaps for f in ("val_true", "val_pred", "chi_true", "chi_pred")
+            for v in snaps[k][f]]
+    lo, hi = float(np.floor(min(vals + [0.0]))), float(np.ceil(max(vals)))
+
+    frames = []
+    for ep in eps:
+        s = snaps[str(ep)]
+        f = Fig(W, H)
+        f.text((pad, 20), "Sixty epochs of supervised learning", 17, True)
+        f.text((pad, 44), "left: New York, corrected against a published answer   ·   "
+               "right: Chicago, never corrected", 12.5, False, MUTED)
+
+        h = hist.get(ep)
+        f.text((W - pad, 18), f"epoch {ep}", 20, True, BLUE, anchor="ra")
+        if h:
+            f.text((W - pad, 46),
+                   f"Chicago  ρ {h['chi_rho']:.2f}   R² {h['chi_r2']:+.2f}"
+                   if abs(h["chi_r2"]) < 10 else
+                   f"Chicago  ρ {h['chi_rho']:.2f}   R² off scale",
+                   12.5, False, MUTED, anchor="ra")
+
+        for col, (tk, pk, title) in enumerate((
+                ("val_true", "val_pred", "NEW YORK"),
+                ("chi_true", "chi_pred", "CHICAGO"))):
+            x = pad + col * (side + 60)
+            y = 84
+            f.text((x, y - 18), title, 12, True, BLUE if col else INK)
+            f.box((x, y, x + side, y + side), 8, fill=(250, 251, 252), outline=LINE, ow=1)
+            m = 18
+            X = lambda v: x + m + (v - lo) / (hi - lo) * (side - 2 * m)      # noqa: E731
+            Y = lambda v: y + side - m - (v - lo) / (hi - lo) * (side - 2 * m)  # noqa: E731
+            for i in range(0, 40, 4):
+                a = lo + (hi - lo) * i / 40
+                b = lo + (hi - lo) * min((i + 2) / 40, 1)
+                f.line([(X(a), Y(a)), (X(b), Y(b))], fill=(205, 210, 216), width=1.2)
+            for t, p in zip(s[tk], s[pk]):
+                f.dot(X(t), Y(min(max(p, lo), hi)), 4.2,
+                      ramp((t - lo) / (hi - lo)), PAPER, .9)
+            f.text((x + side / 2, y + side + 10), "measured →  predicted ↑",
+                   11.5, False, DIM, anchor="ma")
+
+        # A progress bar, so a reader who joins mid-loop knows where they are.
+        bx0, bx1, by = pad, W - pad, H - 22
+        f.line([(bx0, by), (bx1, by)], fill=(232, 235, 238), width=4)
+        f.line([(bx0, by), (bx0 + (bx1 - bx0) * (ep - eps[0]) / (eps[-1] - eps[0]), by)],
+               fill=BLUE, width=4)
+        frames.append(f.img.resize((W, H), Image.LANCZOS))
+
+    OUT.mkdir(parents=True, exist_ok=True)
+    master = frames[0].quantize(colors=200, method=Image.MEDIANCUT)
+    q = [im.quantize(palette=master, dither=Image.NONE) for im in frames]
+    # Linger on the first and last frames: the flat line at the start and the
+    # settled cloud at the end are the two the reader needs time to compare.
+    durations = [900] + [110] * (len(q) - 2) + [2200]
+    q[0].save(OUT / "learning.gif", save_all=True, append_images=q[1:],
+              duration=durations, loop=0, optimize=True)
+    kb = (OUT / "learning.gif").stat().st_size / 1000
+    print(f"  learning.gif       {W}x{H}  {len(q)} frames  {kb:.0f} KB")
+
+
+# ------------------------------------------------- where it was looking
+def figure_saliency(data):
+    """Chip beside the occlusion map, for a busy, a middling and a quiet zone.
+
+    Needs docs/viz/saliency/, which scripts/export_saliency.py writes.
+    """
+    sal = VIZ / "saliency"
+    if not (sal / "index.json").exists():
+        print("  saliency.png omitido (falta docs/viz/saliency/)")
+        return
+    idx = json.loads((sal / "index.json").read_text())
+    ranked = sorted(data["zones"], key=lambda k: -data["zones"][k]["true"])
+    picks = [ranked[0], ranked[len(ranked) // 2], ranked[-1]]
+    picks = [k for k in picks if (sal / f"{k}.png").exists()]
+    if not picks:
+        return
+
+    side, gap, pad = 250, 22, 34
+    W = pad * 2 + len(picks) * (side * 2 + gap) + gap * 2 * (len(picks) - 1)
+    f = Fig(W, 168 + side + 120)
+
+    f.text((pad, 30), "Where it was actually looking", 19, True)
+    f.text((pad, 58),
+           f"Cover a {idx['patch_px'] * idx['metres_per_px']} m square of the chip with "
+           f"flat grey, run the whole network again, and see how far the estimate moves. "
+           f"{idx['probes_per_zone']} probes per zone,\nthe patch stepping "
+           f"{idx['stride_px'] * idx['metres_per_px']} m at a time. No gradients and no "
+           "heuristics — every pixel below is a real prediction the model made with one "
+           "square of the world hidden.", 13.5, False, MUTED)
+
+    x = pad
+    for key in picks:
+        z = data["zones"][key]
+        f.text((x, 112), z["name"], 15, True)
+        f.text((x, 134), f"measured {fmt(z['true'])} · predicted {fmt(z['pred'])}",
+               12, False, DIM)
+        for j, (img, label) in enumerate((
+                (Image.open(VIZ / "chips" / f"{key}.png"), "what it was given"),
+                (Image.open(sal / f"{key}.png"), "what it used"))):
+            cx = x + j * (side + gap)
+            f.box((cx - 1, 167, cx + side + 1, 168 + side + 1), 6, outline=LINE, ow=1)
+            f.paste(img, cx, 168, side)
+            f.text((cx, 168 + side + 12), label, 12, True, BLUE if j else INK)
+        x += side * 2 + gap + gap * 2
+
+    y = 168 + side + 44
+    f.text((pad, y), "Red", 12, True, RED)
+    f.text((pad + 30, y), "covering it LOWERED the estimate — the network was reading "
+           "demand there.", 12, False, MUTED)
+    f.text((pad, y + 20), "Blue", 12, True, BLUE)
+    f.text((pad + 34, y + 20), "covering it RAISED the estimate — evidence against, which "
+           "for the deep blocks means greenery and open ground.", 12, False, MUTED)
+    f.text((pad, y + 40), f"White: covering it changed nothing. Full scale is only "
+           f"×{10 ** idx['scale_log10']:.2f}, shared across all 77 zones — no single patch "
+           "carries a zone, the network reads the whole square.", 12, False, DIM)
+    f.save("saliency.png")
+
+
 # --------------------------------------------------- the city as streets
 def figure_streets(data, water, lo, hi):
     """Chicago drawn only as its street network, tinted by what the model says.
@@ -595,6 +731,8 @@ def main():
 
     print(f"figuras desde docs/viz ({len(keys)} zonas):")
     figure_map(data, geo, water, lo, hi)
+    figure_learning_gif(data)
+    figure_saliency(data)
     figure_streets(data, water, lo, hi)
     figure_learning(data)
     figure_transfer(data)

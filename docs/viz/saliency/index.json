@@ -1,0 +1,317 @@
+{
+ "patch_px": 24,
+ "stride_px": 8,
+ "metres_per_px": 10,
+ "scale_log10": 0.04441,
+ "probes_per_zone": 196,
+ "zones": {
+  "chicago-1": {
+   "max_drop": 0.027,
+   "max_rise": 0.0002
+  },
+  "chicago-2": {
+   "max_drop": 0.018,
+   "max_rise": 0.0025
+  },
+  "chicago-3": {
+   "max_drop": 0.0218,
+   "max_rise": 0.0001
+  },
+  "chicago-4": {
+   "max_drop": 0.0405,
+   "max_rise": 0.0108
+  },
+  "chicago-5": {
+   "max_drop": 0.05,
+   "max_rise": 0.0001
+  },
+  "chicago-6": {
+   "max_drop": 0.0276,
+   "max_rise": 0.0079
+  },
+  "chicago-7": {
+   "max_drop": 0.0355,
+   "max_rise": -0.0016
+  },
+  "chicago-8": {
+   "max_drop": 0.0391,
+   "max_rise": 0.0301
+  },
+  "chicago-9": {
+   "max_drop": 0.0305,
+   "max_rise": 0.0196
+  },
+  "chicago-10": {
+   "max_drop": 0.0201,
+   "max_rise": 0.0226
+  },
+  "chicago-11": {
+   "max_drop": 0.0257,
+   "max_rise": 0.0058
+  },
+  "chicago-12": {
+   "max_drop": 0.0359,
+   "max_rise": 0.0648
+  },
+  "chicago-13": {
+   "max_drop": 0.035,
+   "max_rise": 0.0632
+  },
+  "chicago-14": {
+   "max_drop": 0.0142,
+   "max_rise": 0.0005
+  },
+  "chicago-15": {
+   "max_drop": 0.0299,
+   "max_rise": 0.0059
+  },
+  "chicago-16": {
+   "max_drop": 0.0123,
+   "max_rise": 0.0063
+  },
+  "chicago-17": {
+   "max_drop": 0.032,
+   "max_rise": 0.0184
+  },
+  "chicago-18": {
+   "max_drop": 0.039,
+   "max_rise": 0.0031
+  },
+  "chicago-19": {
+   "max_drop": 0.0286,
+   "max_rise": 0.0053
+  },
+  "chicago-20": {
+   "max_drop": 0.0109,
+   "max_rise": -0.0003
+  },
+  "chicago-21": {
+   "max_drop": 0.0246,
+   "max_rise": 0.0008
+  },
+  "chicago-22": {
+   "max_drop": 0.0142,
+   "max_rise": 0.0036
+  },
+  "chicago-23": {
+   "max_drop": 0.0108,
+   "max_rise": -0.001
+  },
+  "chicago-24": {
+   "max_drop": 0.0373,
+   "max_rise": 0.0031
+  },
+  "chicago-25": {
+   "max_drop": 0.0218,
+   "max_rise": 0.0003
+  },
+  "chicago-26": {
+   "max_drop": 0.0131,
+   "max_rise": -0.0011
+  },
+  "chicago-27": {
+   "max_drop": 0.0277,
+   "max_rise": 0.0143
+  },
+  "chicago-28": {
+   "max_drop": 0.0243,
+   "max_rise": 0.0051
+  },
+  "chicago-29": {
+   "max_drop": 0.0172,
+   "max_rise": 0.0001
+  },
+  "chicago-30": {
+   "max_drop": 0.0192,
+   "max_rise": 0.0013
+  },
+  "chicago-31": {
+   "max_drop": 0.0535,
+   "max_rise": 0.0248
+  },
+  "chicago-32": {
+   "max_drop": 0.0307,
+   "max_rise": 0.0415
+  },
+  "chicago-33": {
+   "max_drop": 0.0112,
+   "max_rise": -0.0001
+  },
+  "chicago-34": {
+   "max_drop": 0.0269,
+   "max_rise": 0.0051
+  },
+  "chicago-35": {
+   "max_drop": 0.0226,
+   "max_rise": 0.0098
+  },
+  "chicago-36": {
+   "max_drop": 0.0283,
+   "max_rise": 0.0668
+  },
+  "chicago-37": {
+   "max_drop": 0.0397,
+   "max_rise": 0.0304
+  },
+  "chicago-38": {
+   "max_drop": 0.0094,
+   "max_rise": -0.0011
+  },
+  "chicago-39": {
+   "max_drop": 0.0188,
+   "max_rise": 0.0152
+  },
+  "chicago-40": {
+   "max_drop": 0.0371,
+   "max_rise": 0.053
+  },
+  "chicago-41": {
+   "max_drop": 0.0517,
+   "max_rise": 0.0004
+  },
+  "chicago-42": {
+   "max_drop": 0.018,
+   "max_rise": 0.0012
+  },
+  "chicago-43": {
+   "max_drop": 0.0158,
+   "max_rise": 0.0017
+  },
+  "chicago-44": {
+   "max_drop": 0.0288,
+   "max_rise": 0.012
+  },
+  "chicago-45": {
+   "max_drop": 0.0355,
+   "max_rise": 0.0122
+  },
+  "chicago-46": {
+   "max_drop": 0.0271,
+   "max_rise": 0.0278
+  },
+  "chicago-47": {
+   "max_drop": 0.0261,
+   "max_rise": 0.0435
+  },
+  "chicago-48": {
+   "max_drop": 0.0384,
+   "max_rise": 0.0164
+  },
+  "chicago-49": {
+   "max_drop": 0.0207,
+   "max_rise": 0.0197
+  },
+  "chicago-50": {
+   "max_drop": 0.0372,
+   "max_rise": 0.0284
+  },
+  "chicago-51": {
+   "max_drop": -0.0186,
+   "max_rise": 0.0874
+  },
+  "chicago-52": {
+   "max_drop": 0.0509,
+   "max_rise": 0.0287
+  },
+  "chicago-53": {
+   "max_drop": 0.041,
+   "max_rise": 0.0351
+  },
+  "chicago-54": {
+   "max_drop": 0.0235,
+   "max_rise": 0.0705
+  },
+  "chicago-55": {
+   "max_drop": 0.0189,
+   "max_rise": 0.0713
+  },
+  "chicago-56": {
+   "max_drop": 0.0291,
+   "max_rise": 0.0077
+  },
+  "chicago-57": {
+   "max_drop": 0.036,
+   "max_rise": 0.0131
+  },
+  "chicago-58": {
+   "max_drop": 0.0332,
+   "max_rise": 0.008
+  },
+  "chicago-59": {
+   "max_drop": 0.0349,
+   "max_rise": 0.0225
+  },
+  "chicago-60": {
+   "max_drop": 0.0229,
+   "max_rise": -0.0012
+  },
+  "chicago-61": {
+   "max_drop": 0.033,
+   "max_rise": 0.013
+  },
+  "chicago-62": {
+   "max_drop": 0.0213,
+   "max_rise": 0.0085
+  },
+  "chicago-63": {
+   "max_drop": 0.0265,
+   "max_rise": 0.0085
+  },
+  "chicago-64": {
+   "max_drop": 0.0296,
+   "max_rise": 0.008
+  },
+  "chicago-65": {
+   "max_drop": 0.0181,
+   "max_rise": 0.0155
+  },
+  "chicago-66": {
+   "max_drop": 0.0379,
+   "max_rise": 0.0697
+  },
+  "chicago-67": {
+   "max_drop": 0.0307,
+   "max_rise": 0.0134
+  },
+  "chicago-68": {
+   "max_drop": 0.0346,
+   "max_rise": 0.0096
+  },
+  "chicago-69": {
+   "max_drop": 0.0199,
+   "max_rise": -0.0003
+  },
+  "chicago-70": {
+   "max_drop": 0.0181,
+   "max_rise": 0.0142
+  },
+  "chicago-71": {
+   "max_drop": 0.0369,
+   "max_rise": 0.012
+  },
+  "chicago-72": {
+   "max_drop": 0.0257,
+   "max_rise": 0.0259
+  },
+  "chicago-73": {
+   "max_drop": 0.0133,
+   "max_rise": 0.0124
+  },
+  "chicago-74": {
+   "max_drop": 0.0311,
+   "max_rise": 0.0065
+  },
+  "chicago-75": {
+   "max_drop": 0.0387,
+   "max_rise": 0.0361
+  },
+  "chicago-76": {
+   "max_drop": 0.0175,
+   "max_rise": 0.0062
+  },
+  "chicago-77": {
+   "max_drop": 0.0467,
+   "max_rise": 0.0004
+  }
+ }
+}

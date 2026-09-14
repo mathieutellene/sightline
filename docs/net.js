@@ -16,13 +16,19 @@
  * a GPU and instant by the standards of a person clicking a button.
  */
 const Net = (() => {
+  // Same stamp as the page, read off this script's own URL: weights and
+  // manifest must never be served from a cache older than the code.
+  const V = new URL(document.currentScript.src, location.href)
+    .searchParams.get("v") || "";
+  // Named `url`: linear() and run() below both use v as a local.
+  const url = (p) => (V ? `${p}?v=${V}` : p);
   let manifest = null, W = null;
 
   async function load() {
     if (manifest) return manifest;
     const [m, buf] = await Promise.all([
-      fetch("net/demandnet.json").then((r) => r.json()),
-      fetch("net/demandnet.bin").then((r) => r.arrayBuffer()),
+      fetch(url("net/demandnet.json")).then((r) => r.json()),
+      fetch(url("net/demandnet.bin")).then((r) => r.arrayBuffer()),
     ]);
     manifest = m;
     W = new Float32Array(buf);

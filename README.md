@@ -65,16 +65,20 @@ disagree. The PNG is also the smaller file.
 
 Supervised learning is a loop: guess, compare against a published answer, adjust.
 217 New York zones supply the answers; 38 more are held back to decide when to
-stop. The figure below is the same four epochs on the city that has answers and
-the city that does not.
+stop. Every epoch was kept, so here are all sixty of them.
 
-![Predicted against measured at epochs 1, 4, 16 and 60, for New York and for Chicago](docs/figures/transfer.png)
+![Sixty epochs of training, New York beside Chicago, as an animation](docs/figures/learning.gif)
 
 At epoch 1 the network returns nearly the same number for every zone — a flat
 line of dots, the safest guess available before it has learned anything. The
 cloud rotates onto the diagonal only where there is an answer to be corrected
-towards. Chicago, in the bottom row, is never corrected; it is simply run
-through the same weights at the same moments.
+towards. Chicago, on the right, is never corrected; it is simply run through the
+same weights at the same moments, and you can watch it stay parallel to the
+diagonal but below it the whole way.
+
+The same four moments, held still:
+
+![Predicted against measured at epochs 1, 4, 16 and 60, for New York and for Chicago](docs/figures/transfer.png)
 
 And the interesting part is what happens to each half of the problem as training
 goes on:
@@ -157,6 +161,35 @@ final block in the set.
 This is measured in `scripts/export_visuals.py` and written into the data the
 page reads, not asserted here — so it cannot quietly stop being true if the
 model is retrained.
+
+### Where it was actually looking
+
+Feature maps show what the network **computed**. They do not show what it
+**used**: a channel can light up brilliantly over something that made no
+difference to the answer. Occlusion answers the harder question directly — cover
+a 240 m square of the chip with flat grey, run the whole network again, and see
+how far the estimate moves. A patch that mattered leaves a hole in the answer.
+
+![Three Chicago chips beside their occlusion sensitivity maps](docs/figures/saliency.png)
+
+196 probes per zone, no gradients and no heuristics: every pixel above is a real
+prediction the model made with one square of the world hidden
+(`scripts/export_saliency.py`). Red means covering it *lowered* the estimate —
+the network was reading demand there. Blue means covering it *raised* it.
+
+Look at Hegewisch on the right. The blue sits **exactly on the open ground**, and
+it arrives independently of the channel-response numbers above: two different
+measurements, one looking at activations and one at predictions, agreeing that
+this network reads demand from the absence of emptiness.
+
+On the [live page](https://mathieutellene.github.io/sightline/) that map is
+clickable. Pick a square yourself and your browser covers it and re-runs the
+network — covering Hegewisch's open ground takes the estimate from 68 to 82,
+**21% higher**, computed on your machine while you watch.
+
+Full scale is only ×1.11, shared across all 77 zones, and that is worth reading
+too: no single patch carries a zone. The network integrates over the whole
+square rather than finding one landmark.
 
 ---
 
@@ -275,6 +308,7 @@ python -m sightline.calibrate    # the calibration curve above
 
 python scripts/export_visuals.py # everything the web page shows
 python scripts/export_weights.py # the weights the browser runs
+python scripts/export_saliency.py # occlusion maps: where it was looking
 python scripts/score_baseline.py # the OpenStreetMap comparison (fetches OSM)
 python scripts/make_figures.py   # every figure in this README
 ```
