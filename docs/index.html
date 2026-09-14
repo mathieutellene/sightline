@@ -5,7 +5,7 @@
   <title>Sightline — reading ride demand off satellite imagery</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="A CNN trained on New York, tested on a Chicago it never saw. Click any zone and watch a 1.28 km satellite chip become a demand estimate, layer by layer.">
-  <link rel="stylesheet" href="style.css?v=17">
+  <link rel="stylesheet" href="style.css?v=18">
 </head>
 <body>
 
@@ -33,6 +33,8 @@
       <p class="lede">
         So a small convolutional network was trained on <strong>New York</strong>, where the
         answer is published — then handed <strong>Chicago</strong>, a city it has never seen.
+        It ranked all 77 of Chicago's neighbourhoods at <strong>ρ 0.88</strong> from nothing
+        but free pixels, and <em>one zone</em> of real local demand halves what is left.
         Click any neighbourhood below and watch it go through the network.
       </p>
     </div>
@@ -251,9 +253,20 @@
     <p class="resnote">
       Shown a city it has never encountered, the network still knows <b>which zones are
       busier than which</b> — rank correlation barely moves. What collapses is the absolute
-      level. New York runs at a median of 744 trips/km²/day and Chicago at 128: a six-fold
-      gap that is market adoption, taxi regulation and transit competition.
+      level. New York runs at a median of 743 trips/km²/day and Chicago at 128: a
+      <b>5.8× gap</b> that is market adoption, taxi regulation and transit competition.
       <b>None of that is visible from orbit</b>, and no larger network would find it.
+    </p>
+    <p class="resnote">
+      Which is worth separating from the other thing a low R² can mean, because the two
+      look identical from one number and call for opposite responses. A network too weak
+      for the task would miss by an arbitrary amount, would improve at both halves slowly
+      and together, would gain nothing from a single scalar, and would lose to the
+      baseline. This one misses by 2.65× inside a 5.8× market gap, solves the ordering by
+      epoch 3 and never settles the level, goes from R² 0.23 to <b>0.53</b> on one offset,
+      and beats the baseline on every column. <b>A single number cannot rescue a bad
+      model</b> — that it does here says the shape was right and only the scale was
+      missing.
     </p>
 
     <div class="baseline" id="baseline" hidden>
@@ -325,7 +338,7 @@
   </div>
 </footer>
 
-<script src="net.js?v=17"></script>
-<script src="app.js?v=17"></script>
+<script src="net.js?v=18"></script>
+<script src="app.js?v=18"></script>
 </body>
 </html>

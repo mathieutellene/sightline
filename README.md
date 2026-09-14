@@ -2,10 +2,21 @@
 
 **A city you have never operated in has no ride data. It does have satellite imagery.**
 
+Trained on New York, then handed Chicago — a city it had never seen, in any
+form. It ranked all 77 of Chicago's neighbourhoods by ride demand at
+**Spearman ρ 0.88**, from nothing but free satellite pixels, and beat an
+OpenStreetMap road-density baseline on every measure (ρ 0.88 against 0.50).
+
+What it cannot do is name the absolute numbers — those depend on the market, not
+on the ground — and **one zone** of real local demand fixes that, halving the
+error. So the practical claim is: *a satellite and one neighbourhood, instead of
+a pilot.*
+
 ### ▶ [Open the interactive map](https://mathieutellene.github.io/sightline/)
 
 Click any Chicago neighbourhood and watch its satellite chip pass through the
-network, block by block, to the estimate that comes out.
+network, block by block, to the estimate that comes out — computed in your own
+browser, from the weights, with no server.
 
 ![Chicago's 77 community areas shaded by measured ride demand, with the headline transfer scores](docs/figures/map.png)
 
@@ -129,10 +140,24 @@ is off by a factor of 2.65.
 ![Measured against predicted for every Chicago zone, and the calibration curve](docs/figures/results.png)
 
 That failure is not mysterious, and it is not fixable with a bigger network. New
-York runs at a median of 744 trips/km²/day; Chicago at 128. That six-fold gap is
+York runs at a median of 743 trips/km²/day; Chicago at 128. That **5.8× gap** is
 how enthusiastically each city has adopted ride-hailing — a property of the
 market, its taxi regulation and its transit system. **No number of rooftops
 encodes it.** Asking pixels for it is asking the wrong source.
+
+It is worth being exact about which of the two possible failures this is, since
+they look identical from a single number and call for opposite responses.
+
+| | a model too weak for the task | information absent from the input |
+|---|---|---|
+| The size of the error | arbitrary | 2.65×, inside the 5.8× the two markets differ by |
+| During training | both halves improve slowly together | ρ solved by epoch 3 (σ 0.005), R² never converges (σ 0.219) |
+| Effect of one scalar offset | nothing — a broken shape stays broken | R² 0.23 → **0.53**, error halved |
+| Against the obvious baseline | loses | wins on every column |
+
+All four say the same thing. **A single number cannot rescue a bad model**; that
+it does here is the proof that the shape was right and only the scale was
+missing — which is a finding about the world, not a shortfall in the network.
 
 ---
 
