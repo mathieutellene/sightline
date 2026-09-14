@@ -233,6 +233,38 @@ h2 { font-size: clamp(21px, 2.4vw, 30px); line-height: 1.18; letter-spacing: -.8
 .resnote { font-size: 14.5px; line-height: 1.62; color: var(--muted); max-width: 92ch; margin-top: 18px; }
 .resnote b { color: var(--text); font-weight: 600; }
 
+/* -------------------------------------------------------- epoch slider */
+.band.alt { background: #eef0f3; }
+.epochbar {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  background: var(--surface); border-radius: 12px; box-shadow: var(--sh-1);
+  padding: 14px 18px; margin-bottom: 18px;
+}
+.epochbar label {
+  font-size: 11px; letter-spacing: .6px; text-transform: uppercase; color: var(--dim);
+}
+.epochbar input[type=range] {
+  /* Bounded rather than greedy: left to flex-grow it pushed the epoch number
+     to the far edge of the card, a screen away from the slider setting it. */
+  flex: 0 1 420px; min-width: 200px; accent-color: var(--blue); height: 22px; cursor: pointer;
+}
+.epochbar b {
+  font-size: 19px; font-weight: 600; font-variant-numeric: tabular-nums;
+  color: var(--blue); min-width: 2.5ch; text-align: right;
+}
+.epochbar b + span {
+  font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums;
+  margin-left: 10px; padding-left: 16px; border-left: 1px solid var(--line);
+}
+.tagged {
+  display: inline-block; margin-left: 8px; padding: 2px 8px; border-radius: 999px;
+  background: #fdeceb; color: #a5271d; font-size: 10.5px; font-weight: 500;
+  letter-spacing: .2px; vertical-align: 1px;
+}
+.tagged.cold { background: var(--blue-soft); color: #174ea6; }
+#snap-ny, #snap-chi { height: 330px; }
+#curve { height: 250px; }
+
 /* ------------------------------------------------------------- charts */
 .two { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
 .chartcard { background: var(--surface); border-radius: 12px; box-shadow: var(--sh-1); padding: 16px 18px 18px; }

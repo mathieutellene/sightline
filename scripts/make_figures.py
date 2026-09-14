@@ -356,6 +356,129 @@ def figure_results(data, lo, hi):
     f.save("results.png")
 
 
+# ----------------------------------------------------- how it learns
+def figure_learning(data):
+    """Three things measured every epoch, stacked on one time axis.
+
+    The point is the contrast between the second panel and the third, so they
+    share an x axis and sit directly on top of one another: a flat line above a
+    thrashing one says it faster than either says alone.
+    """
+    h = data["history"]
+    if not h:
+        return
+    W, PH, top = 1180, 132, 128
+    f = Fig(W, top + 3 * (PH + 46) + 30)
+    ep = [e["epoch"] for e in h]
+    best = data["training"].get("best_epoch")
+
+    f.text((34, 30), "What transfers is learned in three epochs. What does not, never settles.",
+           19, True)
+    f.text((34, 58),
+           "Measured after every epoch while fitting on New York. Chicago is scored here for "
+           "the record only — the epoch that ships is chosen\non New York's validation split "
+           "and nothing else, which is why the vertical line does not sit at Chicago's best "
+           "moment.", 13.5, False, MUTED)
+
+    def panel(i, title, series, ylo, yhi, ticks, note=None):
+        y0 = top + i * (PH + 46)
+        x0, x1 = 34 + 64, W - 34
+        X = lambda e: x0 + (e - ep[0]) / (ep[-1] - ep[0]) * (x1 - x0)     # noqa: E731
+        Y = lambda v: y0 + PH - (min(max(v, ylo), yhi) - ylo) / (yhi - ylo) * PH  # noqa: E731
+        f.text((34, y0 - 22), title, 14, True)
+        for t in ticks:
+            f.line([(x0, Y(t)), (x1, Y(t))], fill=(238, 240, 243), width=1)
+            f.text((x0 - 8, Y(t)), f"{t:g}", 11.5, False, DIM, anchor="rm")
+        if best:
+            f.line([(X(best), y0), (X(best), y0 + PH)], fill=(205, 210, 216), width=1.4)
+        for label, vals, col in series:
+            # Clamping is visible as a flat run against the frame, and the note
+            # says where the curve really went.
+            f.line([(X(e), Y(v)) for e, v in zip(ep, vals)], fill=col, width=2.2)
+        # The legend lives on the title line rather than beside the curves: two
+        # entries right-aligned in the plot drew straight over each other, and
+        # anywhere inside the frame is somewhere a curve can reach.
+        lx = x1
+        for label, _, col in reversed(series):
+            w = f.width_of(label, 12, True)
+            f.text((lx - w, y0 - 22), label, 12, True, col)
+            f.line([(lx - w - 18, y0 - 14), (lx - w - 6, y0 - 14)], fill=col, width=2.4)
+            lx -= w + 34
+        if note:
+            # Backed in white: the note sits inside the frame, and inside the
+            # frame is exactly where a curve is free to run through it.
+            nw = f.width_of(note, 11.5)
+            f.box((x0 + 6, y0 + 4, x0 + 14 + nw, y0 + 22), 4, fill=PAPER)
+            f.text((x0 + 10, y0 + 6), note, 11.5, False, DIM)
+        if i == 2:
+            for e in (1, 10, 20, 30, 40, 50, 60):
+                f.text((X(e), y0 + PH + 26), str(e), 11.5, False, DIM, anchor="ma")
+            f.text(((x0 + x1) / 2, y0 + PH + 44), "epoch", 12.5, False, MUTED, anchor="ma")
+        if best and i == 0:
+            f.text((X(best) + 8, y0 + 4), f"epoch {best} ships", 11.5, True, MUTED)
+
+    panel(0, "Training loss on New York — the network is fitting",
+          [("train loss", [e["train_loss"] for e in h], (95, 99, 104))],
+          0, 0.30, [0, 0.1, 0.2, 0.3])
+    panel(1, "Rank correlation on Chicago — the ordering, on a city never seen",
+          [("Chicago  rank ρ", [e["chi_rho"] for e in h], BLUE)],
+          0.70, 0.95, [0.7, 0.8, 0.9],
+          note="flat from epoch 3 onward: σ = 0.005 after epoch 5")
+    panel(2, "R² on Chicago — the absolute level, same epochs, same model",
+          [("Chicago  R²", [e["chi_r2"] for e in h], RED),
+           ("New York validation  R²", [e["val_r2"] for e in h], (150, 156, 163))],
+          -1, 1, [-1, -0.5, 0, 0.5, 1],
+          note="clamped to ±1; epoch 2 really reaches −37.5.  σ = 0.219 after epoch 5")
+    f.save("learning.png")
+
+
+def figure_transfer(data):
+    """The same four epochs, on the city it is learning and the city it is not."""
+    snaps = data.get("snapshots") or {}
+    picks = [e for e in ("1", "4", "16", "60") if e in snaps]
+    if len(picks) < 2:
+        return
+    side, gap, labw, pad = 230, 26, 158, 34
+    W = pad * 2 + labw + len(picks) * side + (len(picks) - 1) * gap
+    f = Fig(W, 150 + 2 * (side + 40))
+
+    f.text((pad, 30), "Supervised learning, and then the part with no answer key", 19, True)
+    f.text((pad, 58),
+           "Top row: New York, where every dot has a published answer the network is "
+           "corrected against. Bottom row: Chicago, run through the\nsame weights at the same "
+           "epochs, with nothing to correct against. Both axes are log trips/km²/day; the "
+           "diagonal is a perfect call.", 13.5, False, MUTED)
+
+    vals = [v for k in picks for key in ("val_true", "val_pred", "chi_true", "chi_pred")
+            for v in snaps[k][key]]
+    lo, hi = min(vals + [0.0]), max(vals)
+    lo, hi = np.floor(lo), np.ceil(hi)
+
+    for row, (tk, pk, title, sub) in enumerate([
+            ("val_true", "val_pred", "NEW YORK", "held-out zones,\nwith published answers"),
+            ("chi_true", "chi_pred", "CHICAGO", "never seen,\nno answers at all")]):
+        y = 128 + row * (side + 40)
+        f.text((pad, y + 4), title, 13, True, BLUE if row else INK)
+        f.text((pad, y + 24), sub, 11.5, False, DIM)
+        x = pad + labw
+        for k in picks:
+            f.box((x, y, x + side, y + side), 8, fill=(250, 251, 252), outline=LINE, ow=1)
+            m = 16
+            X = lambda v: x + m + (v - lo) / (hi - lo) * (side - 2 * m)      # noqa: E731
+            Y = lambda v: y + side - m - (v - lo) / (hi - lo) * (side - 2 * m)  # noqa: E731
+            for i in range(0, 40, 4):                       # dashed diagonal
+                a, b = lo + (hi - lo) * i / 40, lo + (hi - lo) * min((i + 2) / 40, 1)
+                f.line([(X(a), Y(a)), (X(b), Y(b))], fill=(205, 210, 216), width=1.2)
+            for t, p in zip(snaps[k][tk], snaps[k][pk]):
+                f.dot(X(t), Y(min(max(p, lo), hi)), 3.6,
+                      ramp((t - lo) / (hi - lo)), PAPER, .8)
+            if row == 1:
+                f.text((x + side / 2, y + side + 12), f"epoch {k}", 12, True, MUTED,
+                       anchor="ma")
+            x += side + gap
+    f.save("transfer.png")
+
+
 def main():
     data, geo, water, lo, hi = load()
     keys = list(data["zones"])
@@ -366,6 +489,8 @@ def main():
 
     print(f"figuras desde docs/viz ({len(keys)} zonas):")
     figure_map(data, geo, water, lo, hi)
+    figure_learning(data)
+    figure_transfer(data)
     figure_flow(data, by_true[0])
     figure_compare(data, by_true[0], by_true[-1], ranks)
     figure_results(data, lo, hi)

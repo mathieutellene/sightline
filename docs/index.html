@@ -5,7 +5,7 @@
   <title>Sightline — reading ride demand off satellite imagery</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="A CNN trained on New York, tested on a Chicago it never saw. Click any zone and watch a 1.28 km satellite chip become a demand estimate, layer by layer.">
-  <link rel="stylesheet" href="style.css?v=10">
+  <link rel="stylesheet" href="style.css?v=12">
 </head>
 <body>
 
@@ -114,6 +114,55 @@
   </div>
 </section>
 
+<!-- ---------------------------------------------------- how it learns -->
+<section class="band alt">
+  <div class="wrap">
+    <div class="sechead">
+      <h2>Watch it learn, then watch it meet a city with no answer key</h2>
+      <p class="sub">Supervised learning in one control: drag the epoch. Left is New York,
+        where every dot has a published answer the network is corrected against. Right is
+        Chicago, run through the same weights at the same moment, with nothing to correct
+        against.</p>
+    </div>
+
+    <div class="epochbar">
+      <label for="epoch">Epoch</label>
+      <input type="range" id="epoch" min="0" max="1" step="1" value="0">
+      <b id="epoch-n">—</b>
+      <span id="epoch-note"></span>
+    </div>
+
+    <div class="two">
+      <div class="chartcard">
+        <h3>New York <span class="tagged">fitted against these labels</span></h3>
+        <canvas id="snap-ny"></canvas>
+        <p class="cap">Held-out New York zones. At epoch 1 the network answers roughly the
+          same number for every zone — a flat line of dots. The cloud only turns into the
+          diagonal because each of these dots has a real answer behind it to be corrected
+          towards.</p>
+      </div>
+      <div class="chartcard">
+        <h3>Chicago <span class="tagged cold">no labels, no correction</span></h3>
+        <canvas id="snap-chi"></canvas>
+        <p class="cap">The same weights, the same epoch, a city the training loop never
+          touches. It lands parallel to the diagonal but sits below it: the order is right
+          and the level is not, and no amount of further training moves that.</p>
+      </div>
+    </div>
+
+    <div class="chartcard" style="margin-top:18px">
+      <h3>Every epoch, measured</h3>
+      <canvas id="curve"></canvas>
+      <p class="cap">Chicago's <b>rank correlation</b> reaches 0.88 by the third epoch and
+        then holds — σ of 0.005 over the remaining 55. Chicago's <b>R²</b> on the very same
+        epochs swings from −37 to +0.63, σ of 0.219. What transfers is learned almost
+        immediately and stays; what does not transfer never settles at all. The shipped
+        epoch is chosen on New York's validation split alone — picking the epoch where
+        Chicago happens to look best would be reading the answer sheet.</p>
+    </div>
+  </div>
+</section>
+
 <!-- -------------------------------------------------------- the result -->
 <section class="band">
   <div class="wrap">
@@ -187,6 +236,6 @@
   </div>
 </footer>
 
-<script src="app.js?v=10"></script>
+<script src="app.js?v=12"></script>
 </body>
 </html>

@@ -62,6 +62,7 @@ const shade = (v) => ramp(norm(v));
   showMetrics();
 
   initMap(geo, water);
+  initEpochs();
   draw();
 
   // Open on the densest zone: it is where the story is clearest.
@@ -394,7 +395,144 @@ function drawCalibration() {
 }
 
 /* Both of these can be reached by `pageshow` before the fetches have resolved. */
-function draw() { if (DATA) { drawScatter(); drawCalibration(); } }
+/* ------------------------------------------------- watching it learn */
+let EPOCHS = [], epochIdx = 0;
+
+function initEpochs() {
+  EPOCHS = Object.keys(DATA.snapshots || {}).map(Number).sort((a, b) => a - b);
+  const slider = $("epoch");
+  if (!EPOCHS.length || !slider) { return; }
+  slider.max = String(EPOCHS.length - 1);
+  slider.value = String(EPOCHS.length - 1);
+  epochIdx = EPOCHS.length - 1;
+  slider.addEventListener("input", () => {
+    epochIdx = Number(slider.value);
+    drawSnaps(); drawCurve();
+  });
+  drawSnaps(); drawCurve();
+}
+
+/* One square frame for both snapshot charts, on one shared scale: two panels
+   that auto-scaled separately would hide the very thing being compared. */
+function snapRange() {
+  let lo = 1e9, hi = -1e9;
+  for (const k of Object.keys(DATA.snapshots)) {
+    for (const f of ["val_true", "val_pred", "chi_true", "chi_pred"]) {
+      for (const v of DATA.snapshots[k][f]) { if (v < lo) lo = v; if (v > hi) hi = v; }
+    }
+  }
+  return [Math.floor(Math.min(lo, 0)), Math.ceil(hi)];
+}
+
+function drawSnap(id, tk, pk) {
+  const cv = $(id); if (!cv) return;
+  const box = fit(cv); if (!box) return;
+  const { ctx, W, H } = box, m = { l: 46, r: 14, t: 12, b: 38 };
+  const snap = DATA.snapshots[String(EPOCHS[epochIdx])];
+  const [lo, hi] = snapRange();
+  const side = Math.min(W - m.l - m.r, H - m.t - m.b);
+  const ox = m.l, oy = m.t + (H - m.t - m.b - side) / 2;
+  const X = (v) => ox + (v - lo) / (hi - lo) * side;
+  const Y = (v) => oy + side - (v - lo) / (hi - lo) * side;
+
+  ctx.strokeStyle = "#eceff2"; ctx.lineWidth = 1;
+  ctx.fillStyle = "#858b92"; ctx.font = "11px system-ui, sans-serif";
+  for (let d = Math.ceil(lo); d <= hi; d++) {
+    ctx.beginPath(); ctx.moveTo(ox, Y(d)); ctx.lineTo(ox + side, Y(d)); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(X(d), oy); ctx.lineTo(X(d), oy + side); ctx.stroke();
+    if (d >= 0 && d <= 4) {
+      ctx.textAlign = "right"; ctx.fillText("10" + SUP[d], ox - 6, Y(d) + 4);
+      ctx.textAlign = "center"; ctx.fillText("10" + SUP[d], X(d), oy + side + 16);
+    }
+  }
+  ctx.strokeStyle = "#c3c9cf"; ctx.setLineDash([5, 4]);
+  ctx.beginPath(); ctx.moveTo(X(lo), Y(lo)); ctx.lineTo(X(hi), Y(hi)); ctx.stroke();
+  ctx.setLineDash([]);
+
+  const t = snap[tk], p = snap[pk];
+  for (let i = 0; i < t.length; i++) {
+    // A prediction can start far outside the frame; clamping keeps it visible
+    // and on the edge, rather than silently dropping the worst points.
+    ctx.beginPath();
+    ctx.arc(X(t[i]), Y(Math.min(Math.max(p[i], lo), hi)), 4.4, 0, 6.284);
+    ctx.fillStyle = ramp((t[i] - lo) / (hi - lo));
+    ctx.globalAlpha = .88; ctx.fill(); ctx.globalAlpha = 1;
+    ctx.lineWidth = 1; ctx.strokeStyle = "#fff"; ctx.stroke();
+  }
+  ctx.fillStyle = "#858b92"; ctx.font = "11px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText("measured  trips/km²/day", ox + side / 2, H - 4);
+}
+
+function drawSnaps() {
+  if (!EPOCHS.length) return;
+  const ep = EPOCHS[epochIdx];
+  const row = (DATA.history || []).find((h) => h.epoch === ep);
+  $("epoch-n").textContent = ep;
+  $("epoch-note").textContent = row
+    ? `Chicago at this epoch: rank ρ ${row.chi_rho.toFixed(2)}, R² ${
+      row.chi_r2 >= 0 ? "+" : "−"}${Math.abs(row.chi_r2).toFixed(2)}, typical level error ×${
+      row.chi_err < 100 ? row.chi_err.toFixed(2) : Math.round(row.chi_err)}`
+    : "";
+  drawSnap("snap-ny", "val_true", "val_pred");
+  drawSnap("snap-chi", "chi_true", "chi_pred");
+}
+
+function drawCurve() {
+  const cv = $("curve"); if (!cv) return;
+  const box = fit(cv); if (!box) return;
+  const { ctx, W, H } = box, m = { l: 46, r: 46, t: 16, b: 34 };
+  const h = DATA.history || []; if (!h.length) return;
+  const X = (e) => m.l + (e - 1) / (h.length - 1) * (W - m.l - m.r);
+  // Left axis carries rho on its own narrow range; R2 is clamped to [-1,1] on
+  // the right. Sharing one axis would flatten rho into a straight line at the
+  // top and make the comparison say nothing.
+  const YR = (v) => H - m.b - (Math.min(Math.max(v, 0.7), 0.95) - 0.7) / 0.25 * (H - m.t - m.b);
+  const YQ = (v) => H - m.b - (Math.min(Math.max(v, -1), 1) + 1) / 2 * (H - m.t - m.b);
+
+  ctx.strokeStyle = "#eceff2"; ctx.lineWidth = 1;
+  ctx.font = "11px system-ui, sans-serif";
+  for (const v of [0.7, 0.8, 0.9]) {
+    ctx.beginPath(); ctx.moveTo(m.l, YR(v)); ctx.lineTo(W - m.r, YR(v)); ctx.stroke();
+    ctx.fillStyle = "#1a73e8"; ctx.textAlign = "right";
+    ctx.fillText("ρ " + v.toFixed(1), m.l - 6, YR(v) + 4);
+  }
+  for (const v of [-1, 0, 1]) {
+    ctx.fillStyle = "#d93025"; ctx.textAlign = "left";
+    ctx.fillText("R² " + (v > 0 ? "+" : "") + v, W - m.r + 6, YQ(v) + 4);
+  }
+
+  const line = (key, Y, col, width) => {
+    ctx.beginPath();
+    h.forEach((e, i) => i ? ctx.lineTo(X(e.epoch), Y(e[key])) : ctx.moveTo(X(e.epoch), Y(e[key])));
+    ctx.strokeStyle = col; ctx.lineWidth = width; ctx.stroke();
+  };
+  line("chi_r2", YQ, "#d93025", 2);
+  line("chi_rho", YR, "#1a73e8", 2.4);
+
+  const ep = EPOCHS[epochIdx];
+  if (ep) {
+    ctx.strokeStyle = "#858b92"; ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.moveTo(X(ep), m.t); ctx.lineTo(X(ep), H - m.b); ctx.stroke();
+  }
+  const best = (DATA.training || {}).best_epoch;
+  if (best) {
+    ctx.strokeStyle = "#c3c9cf"; ctx.setLineDash([4, 4]); ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(X(best), m.t); ctx.lineTo(X(best), H - m.b); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = "#858b92"; ctx.textAlign = "center"; ctx.font = "11px system-ui, sans-serif";
+    ctx.fillText("shipped", X(best), m.t + 10);
+  }
+  ctx.fillStyle = "#858b92"; ctx.textAlign = "center";
+  for (const e of [1, 10, 20, 30, 40, 50, h.length]) ctx.fillText(String(e), X(e), H - m.b + 16);
+  ctx.fillText("epoch", (m.l + W - m.r) / 2, H - 4);
+}
+
+function draw() {
+  if (!DATA) return;
+  drawScatter(); drawCalibration();
+  if (EPOCHS.length) { drawSnaps(); drawCurve(); }
+}
 
 /* The map and both charts are rasterised against the size of their box, so they
    have to be rebuilt whenever that size — or the pixel density behind it — is no

@@ -188,6 +188,11 @@ def main():
                     "response_r": response[i]} for i, a in enumerate(acts)],
         "metrics": run["chicago"],
         "nyc_metrics": run["nyc_val"],
+        "history": run.get("history", []),
+        "snapshots": run.get("snapshots", {}),
+        "training": {k: run[k] for k in
+                     ("params", "best_epoch", "epochs", "n_train", "n_val", "n_test")
+                     if k in run},
         "calibration": json.loads((ROOT / "data" / "runs" / "calibration.json").read_text()),
     }, indent=1))
 

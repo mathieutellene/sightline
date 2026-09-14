@@ -59,6 +59,11 @@ def run(epochs=60, seed=0, lr=2e-3, batch=32, val_frac=0.15):
     print(f"parámetros: {n_par:,}")
 
     best = {"val": 1e9, "state": None, "epoch": -1}
+    history: list[dict] = []
+    snaps: dict[str, dict] = {}
+    # Epochs whose predictions are kept whole, so the page can show the cloud
+    # tightening rather than assert that it did.
+    SNAP_AT = {1, 2, 4, 8, 16, 32, epochs}
     t0 = time.time()
     for ep in range(1, epochs + 1):
         net.train()
@@ -76,7 +81,25 @@ def run(epochs=60, seed=0, lr=2e-3, batch=32, val_frac=0.15):
         net.eval()
         with torch.no_grad():
             pv = denorm(net(Xtr_t[va]).numpy())
-        vm = metrics(ytr[va], pv)
+            # Chicago is scored every epoch for the record only. Nothing here
+            # touches early stopping or any other choice — the selection below
+            # reads val MAE and nothing else. Watching the test city while
+            # fitting is exactly how a held-out city stops being held out, so
+            # it is worth being explicit that this is a camera, not a control.
+            pc = denorm(net(Xte_t).numpy())
+        vm, cm = metrics(ytr[va], pv), metrics(yte, pc)
+        history.append({
+            "epoch": ep, "train_loss": tot / len(perm),
+            "val_r2": vm["r2"], "val_mae": vm["mae_log10"],
+            "val_rho": vm["spearman"], "val_err": vm["median_ratio_error"],
+            "chi_r2": cm["r2"], "chi_mae": cm["mae_log10"],
+            "chi_rho": cm["spearman"], "chi_err": cm["median_ratio_error"],
+        })
+        if ep in SNAP_AT:
+            snaps[str(ep)] = {
+                "val_true": ytr[va].tolist(), "val_pred": pv.tolist(),
+                "chi_true": yte.tolist(), "chi_pred": pc.tolist(),
+            }
         if vm["mae_log10"] < best["val"]:
             best = {"val": vm["mae_log10"], "epoch": ep,
                     "state": {k: v.clone() for k, v in net.state_dict().items()}}
@@ -102,8 +125,10 @@ def run(epochs=60, seed=0, lr=2e-3, batch=32, val_frac=0.15):
     OUT.mkdir(parents=True, exist_ok=True)
     torch.save(best["state"], OUT / "demandnet.pt")
     json.dump({
-        "params": n_par, "best_epoch": best["epoch"],
+        "params": n_par, "best_epoch": best["epoch"], "epochs": epochs,
         "target_mu": mu, "target_sd": sd,
+        "n_train": int(len(tr)), "n_val": int(len(va)), "n_test": int(len(yte)),
+        "history": history, "snapshots": snaps,
         "nyc_val": m_nyc, "chicago": m_chi,
         "chicago_pred": {k: float(10 ** p) for k, p in zip(te_keys, pred_chi)},
         "chicago_true": {k: float(10 ** t) for k, t in zip(te_keys, yte)},

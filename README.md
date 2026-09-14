@@ -35,6 +35,48 @@ channels climbs. The last block's 128 numbers are what become the estimate.
 
 ---
 
+## Watching it learn
+
+Supervised learning is a loop: guess, compare against a published answer, adjust.
+217 New York zones supply the answers; 38 more are held back to decide when to
+stop. The figure below is the same four epochs on the city that has answers and
+the city that does not.
+
+![Predicted against measured at epochs 1, 4, 16 and 60, for New York and for Chicago](docs/figures/transfer.png)
+
+At epoch 1 the network returns nearly the same number for every zone — a flat
+line of dots, the safest guess available before it has learned anything. The
+cloud rotates onto the diagonal only where there is an answer to be corrected
+towards. Chicago, in the bottom row, is never corrected; it is simply run
+through the same weights at the same moments.
+
+And the interesting part is what happens to each half of the problem as training
+goes on:
+
+![Training loss, Chicago rank correlation and Chicago R² over 60 epochs](docs/figures/learning.png)
+
+| after epoch 5 | value | spread (σ) |
+|---|---|---|
+| Chicago rank ρ | ≈ 0.88 | **0.005** |
+| Chicago R² | wanders | **0.219** |
+
+**The ordering is learned in three epochs and then never changes.** ρ is 0.76
+after a single pass and 0.88 by the third, and across the remaining 55 epochs it
+moves by a standard deviation of half a percentage point. The level, measured on
+the very same forward passes, swings between −37.5 and +0.63 and never settles.
+
+That is the headline result of this repository showing up as a *dynamic* rather
+than a number: one half of the problem is in the imagery and is found almost
+immediately; the other half is not in the imagery at all, and sixty epochs of
+gradient descent cannot conjure it.
+
+It also names a trap. Chicago's R² peaks at +0.63 at epoch 15 — far better than
+the +0.23 reported here. Shipping that epoch would mean choosing a model by how
+it scored on the test city, which is how a held-out city stops being held out.
+The epoch that ships is chosen on New York's validation split and nothing else.
+
+---
+
 ## The result
 
 Trained on 255 New York zones. Tested on **77 Chicago zones the network never
