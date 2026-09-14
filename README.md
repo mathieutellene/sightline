@@ -280,11 +280,51 @@ get (`sightline/calibrate.py`):
 
 **One zone.** A single day of real demand in a single neighbourhood takes R²
 from 0.23 to 0.53 and halves the error. Three gets most of what twenty-one does,
-and past five the curve is flat — more local data stops buying anything, because
-what remains is not level error any more.
+and past five the curve is flat.
+
+A flat curve is only good news if it flattens somewhere good, so here is the
+bound it should be read against. Fit the offset with **all 77 of Chicago's
+answers in hand** — cheating, not a result — and the best any correction
+achieves is **×1.37**. Three zones reach ×1.45. *Three neighbourhoods get you
+within four percent of knowing the whole city.*
+
+And the obvious refinement does not work. The scatter looks squeezed towards the
+middle, which invites a second parameter to stretch it back out; fitting slope
+as well as offset is **worse at every k** (×1.77 against ×1.45 at three zones,
+×1.56 against ×1.42 at twenty-one), and the best slope with every answer visible
+is 1.05 — that is, none. One scalar is not a simplification here, it is the
+right model, and `sightline/calibrate.py` measures that rather than assuming it.
 
 That is the practical claim of this repository: *you do not need a market study
 to know where the demand is. You need a satellite and one zone.*
+
+### How far off is it, really
+
+Worth being blunt, because a median hides the tail:
+
+| uncalibrated, on Chicago | |
+|---|---|
+| typical (median) error | ×2.65 |
+| 90th percentile | ×4.36 |
+| worst zone | ×10.92 |
+| zones within ×2 of truth | **31%** |
+
+As absolute numbers these are not usable — you would not size a fleet with them.
+Two things make that a bounded problem rather than a fatal one.
+
+**The error is one-directional, not noise.** The network over-calls Chicago
+nearly everywhere — ×3.1 in the quiet third, ×2.9 in the middle, ×1.25 in the
+busy third. That is New York's scale showing through, which is exactly what a
+single offset removes.
+
+**And the distortion is specific to the transfer.** Regress predicted on
+measured inside New York and the slope is **0.97** — no compression at all. Do
+it on Chicago and it is 0.51. The model is not squashing its output; it is being
+asked to place a city whose scale it was never shown.
+
+Even fully calibrated the floor is ×1.42. If it says 1,000, the truth is
+somewhere near 700 to 1,400. That is a tool for deciding **where first**, not
+for deciding how many cars.
 
 ---
 

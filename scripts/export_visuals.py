@@ -206,7 +206,10 @@ def main():
                      if k in run},
         "baseline": (json.loads((ROOT / "data" / "runs" / "baseline.json").read_text())
                      if (ROOT / "data" / "runs" / "baseline.json").exists() else None),
-        "calibration": json.loads((ROOT / "data" / "runs" / "calibration.json").read_text()),
+        # calibration.json grew a second key; a plain list is the old shape.
+        **(lambda c: {"calibration": c["curve"], "calibration_ceiling": c["ceiling"]}
+           if isinstance(c, dict) else {"calibration": c})(
+            json.loads((ROOT / "data" / "runs" / "calibration.json").read_text())),
     }, indent=1))
 
     # Simplified geometry for the map: full precision is 2 MB of coastline

@@ -72,6 +72,7 @@ const shade = (v) => ramp(norm(v));
   $("lg-hi").textContent = fmt(10 ** LOG_MAX) + "+";
   showMetrics();
   showBaseline();
+  showCeiling();
 
   initMap(geo, water);
   initEpochs();
@@ -399,6 +400,34 @@ function drawScatter() {
     ctx.lineWidth = on ? 2.4 : 1; ctx.strokeStyle = on ? "#202124" : "#fff"; ctx.stroke();
   }
   axisLabels(ctx, W, H, m, "measured  trips/km²/day", "predicted");
+}
+
+/* A median hides its own tail, and the calibration curve flattening is only good
+   news if it flattens somewhere good. Both facts are measured in calibrate.py
+   and read from the export, so neither can go stale in the prose. */
+function showCeiling() {
+  const c = DATA.calibration_ceiling;
+  if (!c || !$("ceiling")) return;
+  const rows = DATA.calibration;
+  const at = (k) => rows.find((r) => r.k === k);
+  const pc = c.ratio_percentiles;
+  $("ceiling").innerHTML =
+    `Blunt about the tail, since a median hides it: uncalibrated, the typical zone is off
+     by <b>×${pc["50"]}</b>, the 90th percentile by ×${pc["90"]}, the worst by
+     ×${pc["100"]}, and only <b>${Math.round(c.within["x2"] * 100)}%</b> of zones land
+     within a factor of two. As absolute numbers these are not usable.
+     <br><br>Two things bound that. The error runs one way — the network over-calls
+     Chicago almost everywhere, which is New York's scale showing through and exactly
+     what one offset removes. And the distortion belongs to the transfer, not the model:
+     regress predicted on measured <em>inside</em> New York and the slope is 0.97, no
+     compression at all.
+     <br><br>Fit the offset with all ${KEYS.length} answers in hand — cheating, not a
+     result — and the best any correction reaches is <b>×${c.affine_ceiling.toFixed(2)}</b>.
+     Three zones reach ×${at(3).median_ratio_error.toFixed(2)}: within four percent of
+     knowing the whole city. Adding a slope is worse at every k, and the best slope with
+     every answer visible is ${c.affine_ceiling_slope} — that is, none. One scalar is the
+     right model here, not a shortcut.`;
+  $("ceiling").hidden = false;
 }
 
 function drawCalibration() {
