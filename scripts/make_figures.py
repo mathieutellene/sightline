@@ -356,6 +356,112 @@ def figure_results(data, lo, hi):
     f.save("results.png")
 
 
+# --------------------------------------------------- the city as streets
+def figure_streets(data, water, lo, hi):
+    """Chicago drawn only as its street network, tinted by what the model says.
+
+    Needs data/osm/chicago_roads.json, which sightline/baseline.py fetches. The
+    point of the picture is that none of the colour came from a ride record:
+    every tint is the network's estimate for the zone the street sits in, and
+    the streets outside the city are left grey because there is no estimate for
+    them. It is the map a city gets before it has any data of its own.
+    """
+    path = ROOT / "data" / "osm" / "chicago_roads.json"
+    geo_path = VIZ / "chicago.geojson"
+    if not path.exists():
+        print("  streets.png omitido (falta data/osm/chicago_roads.json)")
+        return
+    net = json.loads(path.read_text())
+    geo = json.loads(geo_path.read_text())
+
+    W, H = 1100, 1500
+    f = Fig(W, H, PAPER)
+
+    zones = []
+    for ft in geo["features"]:
+        key = ft["properties"]["key"]
+        if key not in data["zones"]:
+            continue
+        rings = ([ft["geometry"]["coordinates"]] if ft["geometry"]["type"] == "Polygon"
+                 else ft["geometry"]["coordinates"])
+        flat = [r for poly in rings for r in poly]
+        xs = [p[0] for r in flat for p in r]
+        ys = [p[1] for r in flat for p in r]
+        zones.append({"key": key, "rings": flat,
+                      "bb": (min(xs), min(ys), max(xs), max(ys))})
+
+    pts = [p for z in zones for r in z["rings"] for p in r]
+    x0, x1 = min(p[0] for p in pts), max(p[0] for p in pts)
+    my0 = min(merc(p[1]) for p in pts); my1 = max(merc(p[1]) for p in pts)
+    pad = 30
+    s = min((W - pad * 2) / (x1 - x0), (H - pad * 2) / (my1 - my0))
+    ox = pad + ((W - pad * 2) - (x1 - x0) * s) / 2
+    oy = pad + ((H - pad * 2) - (my1 - my0) * s) / 2
+    px = lambda lon: ox + (lon - x0) * s                        # noqa: E731
+    py = lambda lat: oy + (my1 - merc(lat)) * s                 # noqa: E731
+
+    if water:
+        f.d.polygon([(px(a) * SS, py(b) * SS) for a, b in water], fill=(233, 243, 252))
+
+    def inside(ring, x, y):
+        """Ray casting, on the ring as given."""
+        c = False
+        for (ax, ay), (bx, by) in zip(ring, ring[1:] + ring[:1]):
+            if (ay > y) != (by > y) and x < (bx - ax) * (y - ay) / (by - ay) + ax:
+                c = not c
+        return c
+
+    # A coarse grid over zone bounding boxes, so each street segment is tested
+    # against two or three zones instead of all seventy-seven.
+    cell = 0.01
+    grid: dict[tuple, list] = {}
+    for z in zones:
+        a, b, c, d = z["bb"]
+        for gx in range(int(a / cell), int(c / cell) + 1):
+            for gy in range(int(b / cell), int(d / cell) + 1):
+                grid.setdefault((gx, gy), []).append(z)
+
+    def zone_at(x, y):
+        for z in grid.get((int(x / cell), int(y / cell)), ()):
+            a, b, c, d = z["bb"]
+            if a <= x <= c and b <= y <= d and any(inside(r, x, y) for r in z["rings"]):
+                return z["key"]
+        return None
+
+    drawn = outside = 0
+    for r in net:
+        for a, b in zip(r["pts"], r["pts"][1:]):
+            mx, my = (a[0] + b[0]) / 2, (a[1] + b[1]) / 2
+            key = zone_at(mx, my)
+            if key:
+                t = (np.log10(max(data["zones"][key]["pred"], 1)) - lo) / (hi - lo)
+                col, wdt = ramp(t), 0.75
+                drawn += 1
+            else:
+                col, wdt = (223, 226, 230), 0.5      # beyond the city: no estimate
+                outside += 1
+            f.line([(px(a[0]), py(a[1])), (px(b[0]), py(b[1]))], fill=col, width=wdt)
+
+    f.box((30, 30, 430, 214), 10, fill=PAPER)
+    f.text((50, 50), "Chicago, with nothing but its streets", 21, True)
+    f.text((50, 84),
+           "Every street tinted by the demand the network\n"
+           "predicts for the zone it runs through — an estimate\n"
+           "made from satellite imagery alone, with not one\n"
+           "ride record from this city behind it.", 13, False, MUTED)
+    f.text((50, 168), "Grey: outside the 77 community areas, where there is no estimate.",
+           11.5, False, DIM)
+    bx0, bx1, by = 50, 410, 190
+    for i in range(int((bx1 - bx0) * SS)):
+        f.d.rectangle([bx0 * SS + i, by * SS, bx0 * SS + i + 1, (by + 7) * SS],
+                      fill=ramp(i / ((bx1 - bx0) * SS - 1)))
+    f.text((bx0, by + 12), "quiet", 11, False, DIM)
+    f.text((bx1, by + 12), "busy", 11, False, DIM, anchor="ra")
+    f.text((30, H - 26), "Streets © OpenStreetMap contributors", 10.5, False, DIM)
+    print(f"  ({drawn:,} segmentos en zonas, {outside:,} fuera)")
+    f.save("streets.png")
+
+
 # ----------------------------------------------------- how it learns
 def figure_learning(data):
     """Three things measured every epoch, stacked on one time axis.
@@ -489,6 +595,7 @@ def main():
 
     print(f"figuras desde docs/viz ({len(keys)} zonas):")
     figure_map(data, geo, water, lo, hi)
+    figure_streets(data, water, lo, hi)
     figure_learning(data)
     figure_transfer(data)
     figure_flow(data, by_true[0])

@@ -33,6 +33,32 @@ weights, not an illustration — `scripts/export_visuals.py` writes them.
 Resolution falls at every step — 64², 32², 16², 8² — while the number of
 channels climbs. The last block's 128 numbers are what become the estimate.
 
+### It runs in your browser, not on a server
+
+Everything above was computed in Python and shipped as images, which proves what
+the model did once on a machine you cannot inspect. So the
+[live page](https://mathieutellene.github.io/sightline/) also ships the weights
+and does the arithmetic in front of you: press the button and your own browser
+runs the forward pass, filling in each block's feature maps as it computes them.
+
+There is no runtime to download and no inference API to call. The model is eight
+convolutions, a ReLU after each, an average and two matrix multiplies — so
+executing it is less code than any library that could execute it:
+[`docs/net.js`](docs/net.js) is 120 lines against several megabytes of wasm.
+`scripts/export_weights.py` folds each BatchNorm into the convolution before it,
+which is exact at eval time and removes a whole layer type from the JavaScript,
+then writes the 590,497 parameters as raw float32 for the browser to map
+straight into a `Float32Array`.
+
+Checked against PyTorch on three zones: the browser's log10 output differs by
+**0.000000**, in about 500 ms.
+
+That check is why the chips ship as lossless PNG at their native 128 px rather
+than the crisper-looking 384 px JPEG they used to be. The browser has to run the
+network on exactly those pixels, and the JPEG round trip was measured moving
+predictions by as much as **26%** — enough for the page and Python to visibly
+disagree. The PNG is also the smaller file.
+
 ---
 
 ## Watching it learn
